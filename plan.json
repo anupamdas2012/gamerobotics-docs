@@ -1,0 +1,563 @@
+{
+  "_about": "Project status for gameRobotics: the source for docs/index.html, docs/plan.html and docs/progress.html. Edit statuses here, then run python3 scripts/build-pages.py. Status: todo | doing | done | blocked. Task: [text, done].",
+  "updated": "2026-10-20",
+  "current": "A0",
+  "foundations": [
+    [
+      "gamerobotd: 50 Hz loop, Safety, JSON-RPC API, CLI",
+      "e72d0b8"
+    ],
+    [
+      "Simulator link (body protocol v1) and the LexJR BAM sim body",
+      "e72d0b8"
+    ],
+    [
+      "MotionCore in Rust, golden-tested against MuJoCo and Python, MuJoCo fallback",
+      "09b1d7b"
+    ],
+    [
+      "robot.lean, robot.tilt, saccades",
+      "0705adf"
+    ],
+    [
+      "Behaviour SDK and Runner; smooth follow, cat gaze, keep distance, mimic tilt",
+      "ce13e6f"
+    ],
+    [
+      "Webcam face perception (MediaPipe), face drawn in the viewer",
+      "lexjr-sim 20afb0f"
+    ],
+    [
+      "Docs: architecture, app architecture, engine spec, product spec, update-docs skill",
+      "9240c92"
+    ]
+  ],
+  "modules": [
+    {
+      "id": "M0",
+      "name": "Project format and gamerobotics play",
+      "status": "doing",
+      "effort": "~2 weeks",
+      "depends": [],
+      "why": "Unblocks testing with real people now; every later module needs one place for a robot's settings.",
+      "tasks": [
+        [
+          "One project directory: robot file, personalities, behaviours (projects/lexjr; the two robot descriptions merge in M1)",
+          true
+        ],
+        [
+          "gamerobotics play: start sim body, daemon, camera, app in order; stop them together",
+          true
+        ],
+        [
+          "Health checks: camera (names the app holding it), CPU throttle, missed ticks, sim not answering",
+          true
+        ],
+        [
+          "Plain-word messages for each health problem, with the fix",
+          true
+        ],
+        [
+          "One install (or managed environments the user never sees): gamerobotics setup",
+          true
+        ],
+        [
+          "Live run with the webcam: camera check, start, monitor, Ctrl+C stop",
+          true
+        ],
+        [
+          "Verify on a clean Mac: install to first wiggle under 10 minutes",
+          false
+        ],
+        [
+          "Verify live: an OBS camera clash gives the right message",
+          false
+        ]
+      ],
+      "done_when": [
+        "A clean Mac reaches LexJR looking at you in under 10 minutes, one command",
+        "An OBS camera clash produces the right message"
+      ],
+      "risks": [
+        "MediaPipe's numpy pin and mjpython make a single environment fiddly"
+      ],
+      "notes": [
+        "Built 2026-10-20 (gamerobotics f642db1, lexjr-sim c8a0fc0): play, setup, doctor, projects; three personalities.",
+        "Tested here: headless runs start, monitor and stop cleanly; a second daemon and a process dying are reported; Ctrl+C stops everything; setup builds fresh environments; 16 SDK and 46 lexjr-sim tests.",
+        "Live run with the webcam (2026-10-20): camera check 30 fps with a face in 60 of 60, all four processes ready, ~4 ms ticks, clean stop. It showed flapping slow-tick warnings from single-tick spikes; fixed with a median and a debouncer.",
+        "Not yet tested: a real OBS camera clash, and a clean machine."
+      ]
+    },
+    {
+      "id": "A0",
+      "name": "Addressable API: everything reachable by address",
+      "status": "doing",
+      "effort": "~1–2 weeks",
+      "depends": [
+        "M0"
+      ],
+      "why": "The key rule: every client (CLI, dashboard, later a remote one) talks to APIs by address and never depends on running locally. Then LexJR on the Mac to a Pi walker is a new address, not a rewrite.",
+      "tasks": [
+        [
+          "gamerobotd: the same JSON-RPC over a WebSocket, localhost by default, next to the unix socket",
+          false
+        ],
+        [
+          "Runner control API in the app: slots and owners, switch a behaviour, live parameter changes, load or save a personality",
+          false
+        ],
+        [
+          "Supervisor status API in play: processes and their state, health messages, start and stop",
+          false
+        ],
+        [
+          "The CLI uses these APIs (gamerobotctl and gamerobotics), so it is the first client",
+          false
+        ],
+        [
+          "Jitter histogram in the daemon's state: tick period p50, p99 and worst, over the last minute",
+          false
+        ],
+        [
+          "Guardrails: API servers on their own threads; one state encode a tick shared by all subscribers; slow clients drop frames; no video, meshes or logs on the control API; the runner's control API on its own thread",
+          false
+        ],
+        [
+          "Measure: tick time and jitter unchanged with the dashboard subscribed at 20–50 Hz and intents streaming at 50 Hz",
+          false
+        ],
+        [
+          "Tests: every dashboard action is possible through the APIs alone",
+          false
+        ]
+      ],
+      "done_when": [
+        "Everything play's terminal shows and the camera preview's keys do is available through the APIs",
+        "The CLI works against them",
+        "Measured: the loop's tick time and jitter (p99, worst) are the same with the API in use as without"
+      ],
+      "risks": [
+        "Scope creep into the parked remote access: no pairing or discovery yet, localhost only",
+        "A gateway or encoder slipping into the control thread: guarded by design and by the measurement"
+      ]
+    },
+    {
+      "id": "D0",
+      "name": "Dashboard: a Tauri app over the API (Mac dev build)",
+      "status": "todo",
+      "effort": "~2–3 weeks",
+      "depends": [
+        "A0"
+      ],
+      "why": "Reachy Mini's shape: a Tauri desktop app over the daemon. The second client of the API, with no back-end work of its own; it also makes hardware bring-up easier.",
+      "tasks": [
+        [
+          "Tauri 2 shell (Mac, unsigned dev build): window, app icon",
+          false
+        ],
+        [
+          "Connection by address: local daemon by default; the address is a setting (later: lexjr.local, walker.local)",
+          false
+        ],
+        [
+          "Start and stop the project when the target is local (through the supervisor API); just connect when it is remote",
+          false
+        ],
+        [
+          "Health bar and messages; process states",
+          false
+        ],
+        [
+          "Robot view: 3D from the robot's model and live joint positions",
+          false
+        ],
+        [
+          "Controls: torque, joint sliders, a look-at target",
+          false
+        ],
+        [
+          "Behaviours: slots, switching, personality presets and live sliders, save as mine",
+          false
+        ],
+        [
+          "Bring-up panel: per-joint ticks for calibration (for H0)",
+          false
+        ]
+      ],
+      "done_when": [
+        "Everything you do with play and the camera preview today, you can do from the dashboard",
+        "Pointing it at another address needs no code change"
+      ],
+      "risks": [
+        "Tauri toolchain on Intel macOS: check early",
+        "Keep it a dev build: signing, installers and Windows stay parked"
+      ]
+    },
+    {
+      "id": "H0",
+      "name": "Hardware bring-up: LexJR tethered",
+      "status": "todo",
+      "effort": "~2–3 weeks",
+      "depends": [
+        "M0"
+      ],
+      "why": "Every later choice (the parts catalogue's numbers, packaging, whether LexJR needs a Pi) depends on how the real robot behaves. Tethered over USB to the Mac, the Reachy Mini Lite way.",
+      "tasks": [
+        [
+          "FeetechIo: the RobotIo for Feetech servos over rustypot (sync read and write in ticks, one transaction a tick), tested against a fake serial port",
+          false
+        ],
+        [
+          "gamerobotd --io feetech, with the servo bus port and baud in the robot file",
+          false
+        ],
+        [
+          "Servo setup per joint in the robot file: ID, zero, direction, ratio",
+          false
+        ],
+        [
+          "Bench bring-up with one servo: ID, 7.4 V supply, torque on and off, a move",
+          false
+        ],
+        [
+          "Calibration helper: torque off, move each joint by hand, read ticks, write zeros and directions",
+          false
+        ],
+        [
+          "Measure: loop tick time and jitter on the real bus, command latency, gravity sag vs the sim, a BAM check on one servo",
+          false
+        ],
+        [
+          "play lexjr on the real robot (a hardware target in the project), face follow and cat gaze",
+          false
+        ],
+        [
+          "Record the measurements in the spec; update the sim where it disagrees",
+          false
+        ]
+      ],
+      "done_when": [
+        "The real LexJR follows a face through gamerobotics play, tethered to the Mac",
+        "Measured timing, latency and sag are in the spec, and the sim's assumptions are checked against them"
+      ],
+      "risks": [
+        "Power: servo current and the supply",
+        "Serial timing through the Waveshare board on macOS"
+      ]
+    },
+    {
+      "id": "M1",
+      "name": "Parts catalogue and assembly compiler",
+      "status": "todo",
+      "effort": "~4–6 weeks",
+      "depends": [
+        "M0",
+        "H0"
+      ],
+      "why": "The keystone: every Build experience produces a robot file of kit parts, and this turns it into a running robot. Removes the LexJR hard-coding.",
+      "tasks": [
+        [
+          "Catalogue format: geometry and mesh, mass and inertia, mounts, actuator model, limits, modes",
+          false
+        ],
+        [
+          "First parts: STS3215 (BAM moved out of sim_bam.py), spur N:1, brackets and links, wheel, webcam, IMU, battery and board",
+          false
+        ],
+        [
+          "Compiler: robot file to MJCF, daemon robot file, chain, motion config, capabilities",
+          false
+        ],
+        [
+          "Derived limits and speeds; gears as generated joint equalities",
+          false
+        ],
+        [
+          "Generic sim body: run any compiled MJCF, one BAM model per actuator",
+          false
+        ],
+        [
+          "Regression: LexJR as parts compiles to today's limits; golden replays pass",
+          false
+        ],
+        [
+          "New robot: a pan-tilt head from the catalogue runs cat gaze and mimic tilt unchanged",
+          false
+        ]
+      ],
+      "done_when": [
+        "LexJR recompiled from parts matches today (±57° torso, 183.3°/s) and passes the golden replays",
+        "A pan-tilt head written as a file runs the behaviours unchanged"
+      ],
+      "risks": [
+        "Part geometry (brackets, links, mounts) is CAD work, not code"
+      ]
+    },
+    {
+      "id": "M2",
+      "name": "Checker",
+      "status": "todo",
+      "effort": "~2 weeks",
+      "depends": [
+        "M1"
+      ],
+      "why": "Gates everything a creator, or an LLM, builds; turns mistakes into plain words.",
+      "tasks": [
+        [
+          "Mounts compatible",
+          false
+        ],
+        [
+          "Joint range free of collisions",
+          false
+        ],
+        [
+          "Static torque at a few poses within each actuator's limit",
+          false
+        ],
+        [
+          "Battery and board can feed the servos",
+          false
+        ],
+        [
+          "Archetype's required capabilities present",
+          false
+        ],
+        [
+          "Machine-readable problems for the LLM",
+          false
+        ]
+      ],
+      "done_when": [
+        "Every broken robot in a test set caught with the right message",
+        "LexJR and the pan-tilt head pass"
+      ],
+      "risks": []
+    },
+    {
+      "id": "M3",
+      "name": "Capabilities and needs",
+      "status": "todo",
+      "effort": "~1 week",
+      "depends": [
+        "M1"
+      ],
+      "why": "Behaviours target capabilities, not robots: what makes them run everywhere.",
+      "tasks": [
+        [
+          "Compiler emits capabilities; robot.info reports them",
+          false
+        ],
+        [
+          "Behaviours declare needs; the Runner refuses mismatches and names what's missing",
+          false
+        ],
+        [
+          "MotionCore's gaze config from the gaze capability, for any chain",
+          false
+        ]
+      ],
+      "done_when": [
+        "Cat gaze refused on a robot with no camera, with the reason",
+        "Gaze works on the pan-tilt head from its capability alone"
+      ],
+      "risks": []
+    },
+    {
+      "id": "M4",
+      "name": "LLM builder (describe it)",
+      "status": "todo",
+      "effort": "~3 weeks",
+      "depends": [
+        "D0",
+        "M2",
+        "M3"
+      ],
+      "why": "The most inspiring way in, and it needs no 3D UI: it drives the compiler and checker directly.",
+      "tasks": [
+        [
+          "Tool interface: list_parts, start_from, add_part, connect, set_param, check, explain",
+          false
+        ],
+        [
+          "Propose, check, fix loop until it passes; then show it in the sim and explain it",
+          false
+        ],
+        [
+          "Archetype prompts and examples",
+          false
+        ],
+        [
+          "CLI first: gamerobotics build \"a robot that...\"",
+          false
+        ],
+        [
+          "A test set of descriptions; measure the pass rate",
+          false
+        ]
+      ],
+      "done_when": [
+        "Most test descriptions produce robots that pass the checker and run their archetype's behaviour in sim, without hand fixes"
+      ],
+      "risks": [
+        "LLM reliability: mitigated by the tool-only interface and the checker"
+      ]
+    },
+    {
+      "id": "M5",
+      "name": "Balancing archetype",
+      "status": "todo",
+      "effort": "~4–6 weeks",
+      "depends": [
+        "M1",
+        "M3"
+      ],
+      "why": "The first archetype beyond heads, and the first with real dynamics.",
+      "tasks": [
+        [
+          "STS3215 wheel mode in the catalogue",
+          false
+        ],
+        [
+          "Velocity targets through RobotIo and the body protocol",
+          false
+        ],
+        [
+          "Wheel-mode actuator model (bench data needed; first guess until then)",
+          false
+        ],
+        [
+          "IMU in the sim, through the body protocol",
+          false
+        ],
+        [
+          "balance primitive in the daemon: classical controller first",
+          false
+        ],
+        [
+          "Reference two-wheel balancer; cat gaze on its head while it balances",
+          false
+        ]
+      ],
+      "done_when": [
+        "The reference balancer balances in sim and recovers from a push while cat gaze runs"
+      ],
+      "risks": [
+        "Largest sim-to-real gap; real balancing waits for hardware and a fitted wheel model"
+      ]
+    },
+    {
+      "id": "M6",
+      "name": "Snap builder",
+      "status": "todo",
+      "effort": "~4–6 weeks",
+      "depends": [
+        "D0",
+        "M2",
+        "M3"
+      ],
+      "why": "Hands-on building; the most UI work, so it waits for a stable compiler, checker and file format.",
+      "tasks": [
+        [
+          "Browser 3D view of the compiled MJCF",
+          false
+        ],
+        [
+          "Kit tray; snap to mounts",
+          false
+        ],
+        [
+          "Derived limits, capabilities and checker messages live",
+          false
+        ],
+        [
+          "Edits the same robot file as the LLM builder",
+          false
+        ]
+      ],
+      "done_when": [
+        "A pan-tilt head and a balancer can be built by hand and run in sim"
+      ],
+      "risks": []
+    }
+  ],
+  "tracks": [
+    {
+      "id": "T3",
+      "name": "Integrations: Reachy Mini and microduck",
+      "status": "todo",
+      "when": "after M1",
+      "tasks": [
+        [
+          "Their MuJoCo models in our sim",
+          false
+        ],
+        [
+          "Reachy Mini adapter (Zenoh)",
+          false
+        ],
+        [
+          "microduck adapter (JSON-RPC to robotd)",
+          false
+        ]
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "q": "API first: every client (CLI, dashboard, remote) talks to APIs by address, never depending on running locally; then the Tauri dashboard as the second client, Reachy Mini's shape",
+      "status": "decided",
+      "default": "2026-10-20"
+    },
+    {
+      "q": "Optimize for the best performance per OS, even with separate builds for Mac and Windows; the API never sits inside the control loop",
+      "status": "decided",
+      "default": "2026-10-20"
+    },
+    {
+      "q": "Run tethered over USB first, the Reachy Mini Lite way (the laptop runs everything); platform packaging (desktop app, Windows, containers, onboard Pi, browser) parked as ideas until after bring-up",
+      "status": "decided",
+      "default": "2026-10-20"
+    },
+    {
+      "q": "Onboard computer, when it comes: Raspberry Pi Zero 2 W (parked with the onboard runtime)",
+      "status": "decided",
+      "default": "2026-10-20"
+    },
+    {
+      "q": "Balance controller: classical first, RL later through the same primitive?",
+      "status": "open",
+      "default": "classical first"
+    },
+    {
+      "q": "Who designs the kit's brackets and links, and are they a buyable kit?",
+      "status": "open",
+      "default": "designed in Onshape, as LexJR"
+    },
+    {
+      "q": "Which LLM for the builder, local or hosted?",
+      "status": "open",
+      "default": "any capable model through the tool interface"
+    },
+    {
+      "q": "Browser stack for the studio and snap builder",
+      "status": "open",
+      "default": "three.js rendering the compiled MJCF"
+    },
+    {
+      "q": "First creator",
+      "status": "open",
+      "default": "maker or student"
+    },
+    {
+      "q": "Build: a kit of parts, LLM and snap builders, archetypes to start from",
+      "status": "decided",
+      "default": "2026-10-20"
+    },
+    {
+      "q": "Our own daemon, JSON-RPC, no microduck dependency",
+      "status": "decided",
+      "default": "2026-10-16"
+    }
+  ]
+}

@@ -1,0 +1,610 @@
+<meta charset="utf-8">
+<title>gamerobotd Field Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a field guide for an instrument. A narrow reading column with a timing ruler
+   (the 20 ms tick) as the recurring device; wide figures break out to the full measure. */
+:root {
+  --bg: #EEF1F3;          /* cool instrument-panel grey */
+  --surface: #FFFFFF;
+  --ink: #15202B;
+  --muted: #56636F;
+  --rule: #CDD4DA;
+  --sensor: #237D75;      /* reads: teal */
+  --intent: #A8660F;      /* intents: amber */
+  --safety: #B4432F;      /* writes / safety: coral */
+  --panel: #121A22;       /* animation ground, both themes */
+  --panel-ink: #E6E9EC;
+  --code-bg: #E3E8EC;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10171E; --surface: #17212B; --ink: #E4E8EC; --muted: #9AA7B3; --rule: #2A3743;
+    --sensor: #5CC2B7; --intent: #E8A33D; --safety: #EE7A62; --code-bg: #1C2833;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10171E; --surface: #17212B; --ink: #E4E8EC; --muted: #9AA7B3; --rule: #2A3743;
+  --sensor: #5CC2B7; --intent: #E8A33D; --safety: #EE7A62; --code-bg: #1C2833;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 1rem/1.6 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 1040px; margin: 0 auto; padding-block: 2.5rem 4rem; display: grid; gap: 3.5rem; }
+section { display: grid; gap: 1.1rem; min-width: 0; }
+.prose { max-width: 66ch; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.12; }
+h1 { font-size: clamp(2.3rem, 6vw, 3.6rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: clamp(1.5rem, 3.4vw, 2rem); font-weight: 600; }
+h3 { font-size: 1.15rem; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--sensor); }
+a:focus-visible, button:focus-visible, video:focus-visible { outline: 2px solid var(--intent); outline-offset: 3px; }
+.eyebrow {
+  font: 500 0.75rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+  display: flex; gap: 0.75rem; align-items: center;
+}
+.eyebrow .ms { color: var(--intent); }
+code, kbd { font-family: var(--mono); font-size: 0.88em; }
+:not(pre) > code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 3px; }
+pre {
+  margin: 0; background: var(--code-bg); border-radius: 6px; padding: 1rem 1.1rem;
+  overflow-x: auto; font: 400 0.85rem/1.55 var(--mono); min-width: 0;
+}
+pre .k { color: var(--intent); } pre .s { color: var(--sensor); } pre .c { color: var(--muted); }
+
+/* Hero: the thesis, and the tick ruler that recurs as a device. */
+.hero { display: grid; gap: 1.25rem; }
+.hero .lede { font-size: 1.2rem; max-width: 60ch; color: var(--ink); }
+.ruler { position: relative; height: 54px; max-width: 760px; }
+.ruler .track { position: absolute; inset: 14px 0 auto 0; height: 22px; border: 1.5px solid var(--rule); border-radius: 3px; }
+.ruler .seg { position: absolute; top: 14px; height: 22px; }
+.ruler .read { left: 0; width: 8%; background: var(--sensor); }
+.ruler .think { left: 8%; width: 0.6%; background: var(--intent); }
+.ruler .write { left: 8.6%; width: 7%; background: var(--safety); }
+.ruler .tickmarks { position: absolute; inset: 40px 0 0 0; display: flex; justify-content: space-between;
+  font: 400 0.7rem/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ruler-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; font: 400 0.85rem/1.4 var(--mono); color: var(--muted); }
+.ruler-legend b { font-weight: 500; }
+.sw { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 2px; vertical-align: -0.08em; margin-right: 0.35em; }
+
+/* Figures */
+figure { margin: 0; display: grid; gap: 0.6rem; min-width: 0; }
+figcaption { font-size: 0.88rem; color: var(--muted); max-width: 70ch; }
+.film { background: var(--panel); border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9; max-width: 100%; }
+.film video { display: block; width: 100%; height: 100%; }
+.map { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; overflow-x: auto; }
+.map svg { display: block; min-width: 720px; width: 100%; height: auto; }
+.map .node rect { fill: var(--bg); stroke-width: 2; }
+.map .n-perc rect { stroke: var(--muted); } .map .n-app rect { stroke: var(--intent); }
+.map .n-d rect { stroke: var(--safety); } .map .n-body rect { stroke: var(--sensor); }
+.map text { fill: var(--ink); font-family: var(--body); }
+.map .t-title { font: 600 15px var(--display); } .map .t-sub { font: 400 11.5px var(--mono); fill: var(--muted); }
+.map .edge { fill: none; stroke-width: 2; }
+.map .e-perc { stroke: var(--muted); } .map .e-int { stroke: var(--intent); } .map .e-io { stroke: var(--sensor); }
+.map .e-viz { stroke: var(--muted); stroke-dasharray: 5 5; }
+.map .lbl { font: 400 11px var(--mono); fill: var(--muted); }
+.map .seam { stroke: var(--sensor); stroke-dasharray: 4 4; stroke-width: 1.5; }
+.map .inner rect { fill: var(--surface); stroke: var(--rule); stroke-width: 1; }
+.map .inner text { font: 400 11.5px var(--mono); fill: var(--ink); }
+
+/* Two-column pairing of a film and its notes */
+.pair { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.notes { display: grid; gap: 0.8rem; font-size: 0.95rem; min-width: 0; }
+.notes dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.35rem 1rem; }
+.notes dt { font: 500 0.82rem/1.6 var(--mono); color: var(--muted); }
+.notes dd { margin: 0; }
+@media (max-width: 760px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font: 600 0.78rem/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Use cases */
+.cases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.case { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 1.1rem 1.2rem;
+  display: grid; gap: 0.7rem; align-content: start; min-width: 0; }
+.case .who { font: 500 0.75rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--intent); }
+@media (max-width: 760px) { .cases { grid-template-columns: minmax(0, 1fr); } }
+
+/* Invariants: numbered because each is cited by number in architecture.md */
+.inv { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; counter-reset: inv; max-width: 76ch; }
+.inv li { counter-increment: inv; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); gap: 0.5rem; }
+.inv li::before { content: counter(inv); font: 600 1.05rem/1.5 var(--display); color: var(--safety); }
+
+/* Decisions timeline */
+.log { display: grid; gap: 0; border-left: 2px solid var(--rule); margin-left: 0.4rem; }
+.log div { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 1rem; padding: 0.55rem 0 0.55rem 1.1rem; position: relative; }
+.log div::before { content: ""; position: absolute; left: -6px; top: 1.05rem; width: 10px; height: 10px; border-radius: 50%; background: var(--bg); border: 2px solid var(--intent); }
+.log time { font: 400 0.85rem/1.6 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.log b { font-weight: 600; }
+@media (max-width: 520px) { .log div { grid-template-columns: minmax(0, 1fr); gap: 0.1rem; } }
+
+.status { display: inline-block; font: 500 0.7rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 0.3em 0.55em; border-radius: 3px; border: 1px solid currentColor; }
+.st-ship { color: var(--sensor); } .st-plan { color: var(--muted); }
+footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+.mermaid-wrap { padding: 1rem; }
+.mermaid-wrap pre.mermaid { background: transparent; margin: 0; font-family: var(--body); text-align: center; }
+</style>
+
+<main>
+  <header class="hero">
+    <div class="eyebrow"><span>gameRobotics</span><span>·</span><span>gamerobotd 0.1</span><span>·</span><span>2026-10-19</span></div>
+    <h1>One tick, every robot</h1>
+    <p class="lede">gamerobotd is the only process that touches a gameRobotics robot. Every 20 ms it reads every joint, decides, and writes. Anything that closes a control loop runs inside that tick, so what a policy did in simulation is what it does on the robot.</p>
+    <div class="ruler" role="img" aria-label="A 20 millisecond tick: about 1.6 ms reading, 0.1 ms deciding, 1.4 ms writing, the rest idle">
+      <div class="track"></div>
+      <div class="seg read"></div><div class="seg think"></div><div class="seg write"></div>
+      <div class="tickmarks"><span>0 ms</span><span>5</span><span>10</span><span>15</span><span>20 ms</span></div>
+    </div>
+    <div class="ruler-legend">
+      <span><i class="sw" style="background:var(--sensor)"></i><b>read</b> every joint</span>
+      <span><i class="sw" style="background:var(--intent)"></i><b>decide</b> intents, MotionCore ~30 µs</span>
+      <span><i class="sw" style="background:var(--safety)"></i><b>write</b> through Safety</span>
+      <span>≈ 3 ms of 20 against the LexJR simulator</span>
+    </div>
+  </header>
+
+  <section id="overview">
+    <div class="eyebrow"><span>Architecture overview</span></div>
+    <h2>Every block, and how it talks</h2>
+    <p class="prose">Dashed borders are planned, not built: A0 (the addressable APIs and the publisher), D0 (the dashboard) and H0 (the servo driver). Dashed arrows are planned links, or drawing only. Laid out like Reachy Mini Control's overview.</p>
+    <figure>
+      <div class="map mermaid-wrap"><pre class="mermaid">
+flowchart TB
+    subgraph Clients["Clients, each by address"]
+        CTL["gamerobotctl&lt;br/&gt;Rust CLI"]
+        GRC["gamerobotics CLI + supervisor&lt;br/&gt;play / setup / doctor&lt;br/&gt;starts the processes, checks health"]
+        DASH["Dashboard&lt;br/&gt;Tauri + web UI (D0)"]
+    end
+
+    subgraph Perception["Perception (Python)"]
+        WEBCAM["Webcam"]
+        CAM["face_cam&lt;br/&gt;OpenCV + MediaPipe"]
+    end
+
+    subgraph AppLayer["App (Python, gamerobotics SDK)"]
+        CTRLAPI["Control + status API (A0)"]
+        RUNNER["Runner&lt;br/&gt;one owner per slot"]
+        BEH["Behaviours&lt;br/&gt;SmoothFollow, CatGaze&lt;br/&gt;KeepDistance, MimicTilt"]
+    end
+
+    subgraph Daemon["gamerobotd (Rust, 50 Hz)"]
+        API["JSON-RPC API&lt;br/&gt;unix socket"]
+        WS["WebSocket API (A0)"]
+        LOOP["Control loop&lt;br/&gt;Controller, MotionCore, Safety"]
+        PUB["Publisher (A0)&lt;br/&gt;state, jitter histogram"]
+        IO["RobotIo&lt;br/&gt;FakeIo, RemoteIo, FeetechIo (H0)"]
+    end
+
+    subgraph Body["Body: one of"]
+        BODY["Simulator: body_server&lt;br/&gt;MuJoCo + BAM servo models"]
+        SERVOS["Hardware: servos&lt;br/&gt;via Waveshare board (H0)"]
+    end
+
+    VIEW["Viewer&lt;br/&gt;robot, face, gaze line"]
+
+    CTL &lt;--&gt;|JSON-RPC| API
+    GRC &lt;--&gt;|state, health| API
+    GRC &lt;-.-&gt;|status, start/stop| CTRLAPI
+    DASH &lt;--&gt;|WebSocket, state stream| WS
+    DASH &lt;--&gt;|slots, parameters| CTRLAPI
+    WEBCAM --&gt; CAM
+    CAM --&gt;|UDP 5005, faces 30/s| RUNNER
+    CTRLAPI --- RUNNER
+    RUNNER --&gt; BEH
+    RUNNER &lt;--&gt;|intents, 50 Hz| API
+    API --&gt; LOOP
+    WS --&gt; LOOP
+    LOOP --&gt; PUB
+    LOOP --&gt; IO
+    IO &lt;--&gt;|TCP 7600, body protocol, 1/tick| BODY
+    IO &lt;--&gt;|serial 1 Mbit/s| SERVOS
+    BODY --&gt; VIEW
+    RUNNER -.-&gt;|UDP 7610, viz| VIEW
+
+    classDef planned stroke-dasharray: 5 4
+    class DASH,CTRLAPI,WS,PUB,SERVOS planned
+</pre></div>
+      <figcaption>Every client reaches the robot through an API with an address, so the same dashboard can later point at a robot with its own Pi. Source: <code>docs/architecture.md</code>.</figcaption>
+    </figure>
+    <figure>
+      <div class="film"><video src="animations/ArchitectureTour.mp4" poster="animations/ArchitectureTour.jpg" playsinline controls preload="metadata" aria-label="Narrated video building the architecture diagram one block at a time: the daemon, the body, the API, apps, perception, the viewer, the tools, what is planned, and the connection rule"></video></div>
+      <figcaption>The same diagram built up one block at a time, narrated (2 min 8 s, with sound; voice: ElevenLabs, Brian). Words: <code>docs/animations/tour.json</code>; voice: <code>scripts/voiceover.py</code>.</figcaption>
+    </figure>
+  </section>
+
+  <section id="map">
+    <div class="eyebrow"><span>System map</span></div>
+    <h2>Five processes, one owner</h2>
+    <p class="prose">Perception and behaviour live in apps. gamerobotd owns the robot. The box on the right is whatever <code>RobotIo</code> is plugged in: the MuJoCo body today, Feetech servos next. Nothing to its left changes when it does.</p>
+    <figure>
+      <div class="map">
+        <svg viewBox="0 -10 980 340" role="img" aria-label="face_cam sends faces over UDP to face_follow, which sends intents over JSON-RPC to gamerobotd; gamerobotd drives the MuJoCo body through RobotIo; face_follow also sends the face to the viewer; gamerobotctl talks to gamerobotd">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="context-stroke"/></marker>
+          </defs>
+          <g class="node n-perc"><rect x="20" y="60" width="150" height="72" rx="8"/><text class="t-title" x="95" y="92" text-anchor="middle">face_cam</text><text class="t-sub" x="95" y="112" text-anchor="middle">webcam, MediaPipe</text></g>
+          <g class="node n-app"><rect x="230" y="60" width="160" height="72" rx="8"/><text class="t-title" x="310" y="92" text-anchor="middle">face_follow</text><text class="t-sub" x="310" y="112" text-anchor="middle">behaviour Runner</text></g>
+          <g class="node n-app"><rect x="230" y="200" width="160" height="60" rx="8"/><text class="t-title" x="310" y="228" text-anchor="middle">gamerobotctl</text><text class="t-sub" x="310" y="246" text-anchor="middle">command line</text></g>
+          <g class="node n-d"><rect x="450" y="30" width="250" height="250" rx="10"/><text class="t-title" x="575" y="58" text-anchor="middle">gamerobotd</text><text class="t-sub" x="575" y="76" text-anchor="middle">Rust · 50 Hz</text></g>
+          <g class="inner">
+            <rect x="472" y="92" width="206" height="34" rx="4"/><text x="575" y="114" text-anchor="middle">server: JSON-RPC, threads</text>
+            <rect x="472" y="134" width="206" height="34" rx="4"/><text x="575" y="156" text-anchor="middle">Controller::tick</text>
+            <rect x="472" y="176" width="206" height="34" rx="4"/><text x="575" y="198" text-anchor="middle">MotionCore (gr-motion)</text>
+            <rect x="472" y="218" width="206" height="34" rx="4"/><text x="575" y="240" text-anchor="middle">Safety → RobotIo</text>
+          </g>
+          <line class="seam" x1="745" y1="30" x2="745" y2="300"/><text class="lbl" x="752" y="300">RobotIo seam</text>
+          <g class="node n-body"><rect x="790" y="190" width="170" height="72" rx="8"/><text class="t-title" x="875" y="222" text-anchor="middle">MuJoCo body</text><text class="t-sub" x="875" y="242" text-anchor="middle">body_server, BAM</text></g>
+          <g class="node n-body" opacity="0.55"><rect x="790" y="70" width="170" height="60" rx="8"/><text class="t-title" x="875" y="98" text-anchor="middle">Feetech servos</text><text class="t-sub" x="875" y="116" text-anchor="middle">FeetechIo, planned</text></g>
+          <path class="edge e-perc" d="M170 96 H226" marker-end="url(#ah)"/><text class="lbl" x="198" y="88" text-anchor="middle">UDP 5005</text>
+          <path class="edge e-int" d="M390 96 H446" marker-end="url(#ah)"/><text class="lbl" x="418" y="88" text-anchor="middle">intents</text>
+          <path class="edge e-int" d="M390 230 H446" marker-end="url(#ah)"/><text class="lbl" x="418" y="222" text-anchor="middle">requests</text>
+          <path class="edge e-io" d="M700 235 H786" marker-end="url(#ah)"/><text class="lbl" x="743" y="227" text-anchor="middle">TCP 7600</text>
+          <path class="edge e-viz" d="M310 60 V12 H972 V226 H964" marker-end="url(#ah)"/><text class="lbl" x="400" y="4">UDP 7610: face to draw (viewer only)</text>
+        </svg>
+      </div>
+      <figcaption>Solid lines carry control; the dashed line is visualization and never reaches the daemon.</figcaption>
+    </figure>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Process</th><th>Repo</th><th>Owns</th></tr></thead>
+        <tbody>
+          <tr><td><code>gamerobotd</code></td><td>gamerobotics</td><td>the robot: the loop, safety, motion, the hardware link</td></tr>
+          <tr><td><code>gamerobotctl</code></td><td>gamerobotics</td><td>nothing; a command line over the API</td></tr>
+          <tr><td><code>body_server.py</code></td><td>lexjr-sim</td><td>LexJR's simulated body: MuJoCo, BAM servo models, the viewer</td></tr>
+          <tr><td><code>face_cam.py</code></td><td>lexjr-sim</td><td>the webcam and face perception; pixels never leave it</td></tr>
+          <tr><td><code>face_follow.py</code></td><td>lexjr-sim</td><td>a behaviour Runner: smooth follow or cat gaze, keep distance, mimic tilt</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tick">
+    <div class="eyebrow"><span>The tick</span><span class="ms">20 ms</span></div>
+    <h2>Read, decide, write, every period</h2>
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/TickLoop.mp4" poster="animations/TickLoop.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation of one tick and a skipped late tick"></video></div>
+        <figcaption>One period, phase by phase, then a late tick: skipped and counted, never caught up with a burst of stale commands.</figcaption>
+      </figure>
+      <div class="notes">
+        <dl>
+          <dt>read</dt><dd>every joint (and IMU) in one transaction</dd>
+          <dt>apply</dt><dd>client messages since the last tick, in order, never blocking</dd>
+          <dt>decide</dt><dd>joints mode, or MotionCore on this tick's positions</dd>
+          <dt>safety</dt><dd>finite, within limits, within speed; the only writer</dd>
+          <dt>write</dt><dd>goal positions; state to subscribers, dropped if they lag</dd>
+        </dl>
+        <p>A failed read writes nothing that tick. Torque comes on only when someone enables the robot, and then it holds the pose it is in.</p>
+        <p>On the Intel MacBook with the whole demo running, the CPU throttles to 20% within minutes; ticks then reach 10–50 ms and up to a fifth are skipped. The simulator, its viewer and MediaPipe are the load; the daemon's own work is about 30 µs.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="flow">
+    <div class="eyebrow"><span>Data flow</span></div>
+    <h2>Perception out there, motion in the tick</h2>
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/Pipeline.mp4" poster="animations/Pipeline.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation of messages flowing from the camera to the robot, and the RobotIo seam swapping the body"></video></div>
+        <figcaption>Faces at camera rate, intents at 50 Hz, one body read and write per tick. Then the body is swapped behind the seam.</figcaption>
+      </figure>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Link</th><th>Transport</th><th>Rate</th></tr></thead>
+          <tbody>
+            <tr><td>app ↔ daemon</td><td>unix socket, JSON-RPC 2.0, one object a line</td><td class="num">≤ 50/s</td></tr>
+            <tr><td>daemon ↔ sim</td><td>TCP 7600, body protocol v1</td><td class="num">1/tick</td></tr>
+            <tr><td>camera → app</td><td>UDP 5005, 160 landmarks, 3.7 kB</td><td class="num">~30/s</td></tr>
+            <tr><td>app → viewer</td><td>UDP 7610, visualization only</td><td class="num">≤ 50/s</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="gaze">
+    <div class="eyebrow"><span>Motion</span><span>gr-motion</span></div>
+    <h2>The eyes lead, the body follows</h2>
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/StaggeredGaze.mp4" poster="animations/StaggeredGaze.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation of the head snapping to a target while the body follows slowly"></video></div>
+        <figcaption>A yaw-only model with robot.toml's springs: the gaze reaches the target in about a quarter second; the body takes about two, and the head unwinds as it arrives.</figcaption>
+      </figure>
+      <div class="notes">
+        <p><code>robot.look_at</code> hands the joints to MotionCore, which runs inside the tick:</p>
+        <dl>
+          <dt>body</dt><dd>whole-chain aim, 8° deadband, springs 0.9 / 1.4 Hz</dd>
+          <dt>layers</dt><dd>idle sway, and the lean (0.8 Hz, ≤ 30°)</dd>
+          <dt>tilt</dt><dd>the head's roll about its gaze, as the solver's target (2 Hz, ≤ 20°)</dd>
+          <dt>head</dt><dd>aimed against the commanded body, 5 Hz spring</dd>
+          <dt>saccade</dt><dd>or a jump: a quintic from the present velocity, 60 ms + 2.5 ms/°</dd>
+          <dt>trim</dt><dd>integrates measured gaze error once still (gravity sag)</dd>
+          <dt>solver</dt><dd>damped least squares: gaze, then the tilt (level by default), then posture</dd>
+        </dl>
+        <p>Kinematics come from a native chain exported from the MJCF; <code>--kinematics mujoco</code> uses MuJoCo itself instead.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="app">
+    <div class="eyebrow"><span>App architecture</span></div>
+    <h2>How an app is built</h2>
+    <p class="prose">The daemon moves; apps decide. An app turns what the robot sees into intents. The <code>gamerobotics</code> Python SDK supplies the robot-neutral parts (Percept, Behaviour, Intent, Runner, the client), and LexJR's app supplies its perception and its behaviours. Details and code are in <a href="app-architecture.md">app-architecture.md</a>.</p>
+    <figure>
+      <div class="map">
+        <svg viewBox="0 0 980 250" role="img" aria-label="Layers of an app: the webcam feeds face_cam perception, which builds a Percept; the Runner gives the gaze, lean and tilt slots to behaviours; the client sends their intents to gamerobotd">
+          <g class="node n-perc"><rect x="10" y="60" width="150" height="110" rx="8"/><text class="t-title" x="85" y="92" text-anchor="middle">perception</text><text class="t-sub" x="85" y="112" text-anchor="middle">face_cam, MediaPipe</text><text class="t-sub" x="85" y="130" text-anchor="middle">FaceTarget:</text><text class="t-sub" x="85" y="146" text-anchor="middle">world points</text></g>
+          <g class="node n-perc"><rect x="195" y="60" width="130" height="110" rx="8"/><text class="t-title" x="260" y="92" text-anchor="middle">Percept</text><text class="t-sub" x="260" y="112" text-anchor="middle">face: eyes,</text><text class="t-sub" x="260" y="128" text-anchor="middle">mouth, distance,</text><text class="t-sub" x="260" y="144" text-anchor="middle">tilt; events</text></g>
+          <g class="node n-app"><rect x="360" y="20" width="300" height="190" rx="10"/><text class="t-title" x="510" y="46" text-anchor="middle">Runner</text><text class="t-sub" x="510" y="64" text-anchor="middle">one owner per slot · live switch · glide</text></g>
+          <g class="inner">
+            <rect x="380" y="78" width="260" height="34" rx="4"/><text x="510" y="100" text-anchor="middle">gaze: SmoothFollow | CatGaze  [m]</text>
+            <rect x="380" y="120" width="260" height="34" rx="4"/><text x="510" y="142" text-anchor="middle">lean: KeepDistance</text>
+            <rect x="380" y="162" width="260" height="34" rx="4"/><text x="510" y="184" text-anchor="middle">tilt: MimicTilt</text>
+          </g>
+          <g class="node n-app"><rect x="695" y="80" width="110" height="70" rx="8"/><text class="t-title" x="750" y="110" text-anchor="middle">Robot</text><text class="t-sub" x="750" y="128" text-anchor="middle">client</text></g>
+          <g class="node n-d"><rect x="840" y="60" width="130" height="110" rx="8"/><text class="t-title" x="905" y="92" text-anchor="middle">gamerobotd</text><text class="t-sub" x="905" y="112" text-anchor="middle">look_at ± saccade</text><text class="t-sub" x="905" y="128" text-anchor="middle">lean, tilt</text><text class="t-sub" x="905" y="144" text-anchor="middle">Safety</text></g>
+          <path class="edge e-perc" d="M160 115 H191" marker-end="url(#ah)"/>
+          <path class="edge e-int" d="M325 115 H356" marker-end="url(#ah)"/>
+          <path class="edge e-int" d="M660 115 H691" marker-end="url(#ah)"/>
+          <path class="edge e-int" d="M805 115 H836" marker-end="url(#ah)"/>
+          <text class="lbl" x="85" y="235" text-anchor="middle">lexjr-sim</text>
+          <text class="lbl" x="260" y="235" text-anchor="middle">SDK type</text>
+          <text class="lbl" x="510" y="235" text-anchor="middle">SDK runner + LexJR behaviours (plugins)</text>
+          <text class="lbl" x="750" y="235" text-anchor="middle">SDK</text>
+          <text class="lbl" x="905" y="235" text-anchor="middle">Rust, in the tick</text>
+        </svg>
+      </div>
+      <figcaption>Everything left of the daemon is the app. Swap the camera, the behaviours or the robot, and the layers stay the same.</figcaption>
+    </figure>
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/AppTick.mp4" poster="animations/AppTick.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation of one app tick: a percept goes to each slot's owner, intents go to the daemon; then m switches the gaze slot to cat gaze with a glide"></video></div>
+        <figcaption>One app tick at 50 Hz, then <kbd>m</kbd>: the gaze slot passes to CatGaze with a half-second glide while lean and tilt carry on.</figcaption>
+      </figure>
+      <div class="notes">
+        <dl>
+          <dt>slots</dt><dd>gaze, lean, tilt: one per motion primitive</dd>
+          <dt>owners</dt><dd>one behaviour per slot; the first in the list that wants it</dd>
+          <dt>share</dt><dd>different slots run together: one looks, one leans</dd>
+          <dt>replace</dt><dd>the same slot: <code>select</code> or <code>cycle</code> switches live</dd>
+          <dt>drop</dt><dd>intents for slots a behaviour does not own are ignored</dd>
+          <dt>handover</dt><dd>the new owner starts from the last target; 0.5 s glide, no saccades</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="cases">
+      <article class="case">
+        <div class="who">Example 1</div>
+        <h3>Face follow: three behaviours, three slots</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Behaviour</th><th>Slot</th><th>Sends</th></tr></thead>
+            <tbody>
+              <tr><td><code>SmoothFollow</code></td><td>gaze</td><td><code>look_at(face.eyes)</code> each tick; lost: ease home</td></tr>
+              <tr><td><code>KeepDistance</code></td><td>lean</td><td>1.5° per cm past 2 cm, ≤ 30°</td></tr>
+              <tr><td><code>MimicTilt</code></td><td>tilt</td><td>your tilt, mirrored, past 3°, ≤ 20°</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>SmoothFollow says "look there" every tick, and the daemon's head spring turns it into a glide.</p>
+      </article>
+      <article class="case">
+        <div class="who">Example 2</div>
+        <h3>Cat gaze: when to look, not how</h3>
+        <div class="map">
+          <svg viewBox="0 0 440 260" role="img" aria-label="Cat gaze states: idle, track, dart and stare, with the transitions between them" style="min-width:360px">
+            <g class="node n-perc"><rect x="20" y="20" width="110" height="46" rx="8"/><text class="t-title" x="75" y="49" text-anchor="middle">idle</text></g>
+            <g class="node n-app"><rect x="300" y="20" width="120" height="46" rx="8"/><text class="t-title" x="360" y="49" text-anchor="middle">track</text></g>
+            <g class="node n-app"><rect x="300" y="190" width="120" height="46" rx="8"/><text class="t-title" x="360" y="219" text-anchor="middle">dart</text></g>
+            <g class="node n-app"><rect x="20" y="190" width="110" height="46" rx="8"/><text class="t-title" x="75" y="219" text-anchor="middle">stare</text></g>
+            <path class="edge e-int" d="M130 36 H296" marker-end="url(#ah)"/><text class="lbl" x="213" y="28" text-anchor="middle">face: react, saccade</text>
+            <path class="edge e-perc" d="M300 54 H134" marker-end="url(#ah)"/><text class="lbl" x="213" y="74" text-anchor="middle">face lost</text>
+            <path class="edge e-int" d="M360 66 V186" marker-end="url(#ah)"/><text class="lbl" x="368" y="130">1–2.5 s</text>
+            <path class="edge e-int" d="M300 213 H134" marker-end="url(#ah)"/><text class="lbl" x="217" y="205" text-anchor="middle">3–7 darts</text>
+            <path class="edge e-int" d="M130 225 Q215 255 300 225" marker-end="url(#ah)"/><text class="lbl" x="215" y="254" text-anchor="middle">1.5–4 s</text>
+            <path class="edge e-io" d="M75 190 Q75 120 296 52" marker-end="url(#ah)"/><text class="lbl" x="92" y="140">face moved &gt; 8°</text>
+          </svg>
+        </div>
+        <p>Darts are saccades to an eye or the mouth with ±1.5° of scatter. <em>When</em> to jump is the behaviour's choice; the jump itself is the daemon's saccade. The attention cone is anchored on the face, so a dart to the mouth is not mistaken for you moving.</p>
+      </article>
+    </div>
+    <p class="prose">Switching between them: <kbd>m</kbd> calls <code>Runner.cycle("gaze")</code>. Cat gaze starts by staring where the robot already looks, so nothing moves until it decides to; going back, smooth follow glides to your face. Lean and tilt never stop.</p>
+  </section>
+
+  <section id="behaviours">
+    <div class="eyebrow"><span>Behaviours</span><span>compared</span></div>
+    <h2>Two gaze behaviours, one face</h2>
+    <p class="prose">A motion primitive says how the body moves and lives in the tick: <code>look_at</code>, glide or saccade, <code>lean</code>, <code>tilt</code>. A behaviour decides what to do and when, from what the robot sees, and is a plugin. The Runner gives each slot to one behaviour and switches them live.</p>
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/CatVsSmooth.mp4" poster="animations/CatVsSmooth.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation comparing where smooth follow and cat gaze look as the same face drifts and jumps"></video></div>
+        <figcaption>The real SmoothFollow and CatGaze on the same face. Smooth glides after every drift; the cat holds, reacts after a delay, jumps, follows, then darts to your eyes and mouth.</figcaption>
+      </figure>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Slot</th><th>Behaviour</th><th>Sends</th></tr></thead>
+          <tbody>
+            <tr><td>gaze</td><td><code>SmoothFollow</code> or <code>CatGaze</code>, switched with <kbd>m</kbd></td><td><code>robot.look_at</code></td></tr>
+            <tr><td>lean</td><td><code>KeepDistance</code></td><td><code>robot.lean</code></td></tr>
+            <tr><td>tilt</td><td><code>MimicTilt</code></td><td><code>robot.tilt</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="prose">Switching gaze glides between the two behaviours' targets for half a second, with saccades held back, so the robot never snaps. Whatever a behaviour sends, the daemon's Safety still clamps.</p>
+    <p class="prose">Tried live with the webcam: the cat found the face in a quarter second and cycled through track, dart and stare for nearly seven minutes, with lean and tilt alongside. Quit other camera apps first; with OBS open, the webcam gave almost no frames.</p>
+  </section>
+
+  <section id="golden">
+    <div class="eyebrow"><span>Verification</span></div>
+    <h2>The port is the same numbers</h2>
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/GoldenHarness.mp4" poster="animations/GoldenHarness.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation of golden test data flowing from MuJoCo to both Rust backends, with error bars on a log scale"></video></div>
+        <figcaption>lexjr-sim exports MuJoCo's and the Python's answers; both Rust backends must reproduce them.</figcaption>
+      </figure>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Check</th><th>Cases</th><th>Worst</th></tr></thead>
+          <tbody>
+            <tr><td>eye, gaze, Jacobian</td><td class="num">500</td><td class="num">2.4e-15</td></tr>
+            <tr><td>aim solver, with roll targets</td><td class="num">300</td><td class="num">3.9e-11 rad</td></tr>
+            <tr><td>MotionCore replays, incl. tilt, saccades</td><td class="num">4,850 ticks</td><td class="num">2.0e-11 rad</td></tr>
+            <tr><td>through Controller + Safety</td><td class="num">750 ticks</td><td class="num">2.0e-11 rad</td></tr>
+            <tr><td>one servo tick, for scale</td><td class="num">—</td><td class="num">1.5e-3 rad</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="prose">Eight deliberately planted bugs all fail the harness. It also caught two real mismatches: a torso speed rounded to 183°/s from 550/3, and a head-yaw limit rounded to 87° from 87.0002°. Either would have let Safety reshape the motion without a trace; both are now tested.</p>
+  </section>
+
+  <section id="uses">
+    <div class="eyebrow"><span>Use cases</span></div>
+    <h2>What you do with it</h2>
+    <div class="cases">
+      <article class="case">
+        <div class="who">Demo</div>
+        <h3>Have LexJR follow your face</h3>
+        <pre><span class="c"># lexjr-sim, four terminals</span>
+.venv-bam/bin/mjpython body_server.py
+../gamerobotics/target/release/gamerobotd --io sim
+.venv-cam/bin/python face_cam.py
+.venv-bam/bin/python face_follow.py</pre>
+        <p>It looks at you, leans to keep its distance, and mirrors the tilt of your head. Press <kbd>]</kbd> in the viewer for the side view, and <kbd>c</kbd> in the camera preview to set your normal distance.</p>
+      </article>
+      <article class="case">
+        <div class="who">Bench</div>
+        <h3>Move one joint by hand</h3>
+        <pre>gamerobotctl enable
+gamerobotctl joints neck_pitch=20 head_yaw=-15
+gamerobotctl watch --hz 5
+gamerobotctl disable</pre>
+        <p>Degrees on the command line, radians on the wire. Safety clamps to the robot file's limits and speeds.</p>
+      </article>
+      <article class="case">
+        <div class="who">App</div>
+        <h3>Write a behaviour</h3>
+        <pre><span class="k">class</span> Peekaboo(Behaviour):
+    name = <span class="s">"peekaboo"</span>
+    slots = frozenset({<span class="s">"gaze"</span>})
+
+    <span class="k">def</span> tick(self, seen):
+        <span class="k">if</span> seen.face <span class="k">is</span> None:
+            <span class="k">return</span> [Intent.look_at(None)]
+        <span class="k">return</span> [Intent.look_at(seen.face.eyes, saccade=True)]</pre>
+        <p>Subclass <code>Behaviour</code> from the <code>gamerobotics</code> package and add it to a Runner. Or skip the SDK: any language that writes a JSON-RPC line to the socket can drive the robot.</p>
+      </article>
+      <article class="case">
+        <div class="who">New robot</div>
+        <h3>Describe it, don't code it</h3>
+        <pre>[[joint]]
+name = <span class="s">"torso_yaw"</span>
+limit_deg = [-57, 57]
+max_speed_dps = 183.33333333333334
+
+[motion]
+chain = <span class="s">"lexjr.chain.json"</span>
+config = <span class="s">"lexjr.motion.json"</span></pre>
+        <p>A robot file and a <code>RobotIo</code> backend. The daemon, API and apps stay as they are.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="invariants">
+    <div class="eyebrow"><span>Invariants</span><span>tested</span></div>
+    <h2>Rules the code keeps</h2>
+    <ol class="inv">
+      <li>Nothing moves because a process started; enabling holds the present pose.</li>
+      <li>The loop never waits on a client.</li>
+      <li>A tick whose read failed writes nothing.</li>
+      <li>Safety is the only writer, and owns the only RobotIo.</li>
+      <li>Late ticks are skipped and counted, never caught up.</li>
+      <li>Intents while disabled are dropped, never replayed.</li>
+      <li>The robot file's limits are never tighter than the motion's.</li>
+      <li>The Rust motion matches its Python reference to 1e-9 rad.</li>
+    </ol>
+  </section>
+
+  <section id="decisions">
+    <div class="eyebrow"><span>Decision log</span></div>
+    <h2>How it got this shape</h2>
+    <div class="log">
+      <div><time>2026-10-16</time><p><b>Our own daemon,</b> not a fork of microduck or Reachy Mini: one daemon for every robot.</p></div>
+      <div><time>2026-10-16</time><p><b>JSON-RPC over a unix socket,</b> not Zenoh. No broker; permissions are access control; nothing latency-critical crosses it.</p></div>
+      <div><time>2026-10-16</time><p><b>No microduck dependency.</b> Its Apache-2.0 code may be copied and credited; its policies should load later.</p></div>
+      <div><time>2026-10-16</time><p><b>Reachy Mini later, by bridge,</b> as a way in for its users, without Zenoh in the loop.</p></div>
+      <div><time>2026-10-18</time><p><b>Gaze in Rust, in the tick.</b> Our own solver (the <code>k</code> crate is single-task and URDF-only), with MuJoCo as a selectable fallback.</p></div>
+      <div><time>2026-10-18</time><p><b>Golden tests</b> from MuJoCo and the Python: a port is right only if it is the same numbers.</p></div>
+      <div><time>2026-10-19</time><p><b>Simulator timeout 2 s,</b> not 200 ms: a slow simulator is still alive.</p></div>
+      <div><time>2026-10-19</time><p><b>Saccades as a motion primitive,</b> from the head's present velocity; when to jump is a behaviour's choice.</p></div>
+      <div><time>2026-10-19</time><p><b>Behaviours as plugins:</b> a Python SDK and a Runner with one owner per slot and live, gliding switches. Cat gaze is the second gaze behaviour.</p></div>
+      <div><time>2026-10-19</time><p><b>Mimic head tilt,</b> a third behaviour on the same camera: the solver's horizon task takes a roll target, so the head tilts while its gaze stays on you. Mirrored, as on a call.</p></div>
+    </div>
+  </section>
+
+  <section id="next">
+    <div class="eyebrow"><span>Roadmap</span></div>
+    <h2>Built and next</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Feature</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Daemon, API, CLI, Safety, simulator link</td><td><span class="status st-ship">shipped</span></td></tr>
+          <tr><td>Gaze and lean in the tick, both kinematics backends</td><td><span class="status st-ship">shipped</span></td></tr>
+          <tr><td>Face follow with webcam, face drawn in the viewer</td><td><span class="status st-ship">shipped</span></td></tr>
+          <tr><td>Mimic head tilt (<code>robot.tilt</code>)</td><td><span class="status st-ship">shipped</span></td></tr>
+          <tr><td>Saccades; behaviour SDK and Runner; cat gaze</td><td><span class="status st-ship">shipped</span></td></tr>
+          <tr><td>Behaviour scaffold, replay testing, percept service</td><td><span class="status st-plan">planned</span></td></tr>
+          <tr><td>FeetechIo: real servos over rustypot</td><td><span class="status st-plan">planned</span></td></tr>
+          <tr><td>ONNX policy runner; load microduck policies</td><td><span class="status st-plan">planned</span></td></tr>
+          <tr><td>Reachy Mini bridge</td><td><span class="status st-plan">planned</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer><a href="index.html">Project home</a> · <a href="media.html">All explainer videos</a> · The product built on this engine, with UI mockups: <a href="product.html">product.html</a>. Generated from <code>docs/architecture.md</code> and <code>docs/spec.md</code>; animations from <code>docs/animations/scenes.py</code> (manim). Updated by the <code>update-docs</code> skill whenever the architecture or the spec changes.</footer>
+</main>
+
+<script type="module">
+// The architecture overview, from the same Mermaid source as docs/architecture.md.
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+const dark = (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
+mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "neutral", flowchart: { curve: "basis" }, securityLevel: "strict" });
+</script>
+<script>
+// Play the explainers when they scroll into view, unless the viewer prefers reduced motion.
+(() => {
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce || !("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      const v = e.target;
+      if (e.isIntersecting) { v.play().catch(() => {}); } else { v.pause(); }
+    }
+  }, { threshold: 0.5 });
+  document.querySelectorAll("video").forEach((v) => io.observe(v));
+})();
+</script>

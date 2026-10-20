@@ -1,0 +1,78 @@
+<meta charset="utf-8">
+<title>gameRobotics Command Line</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="site.css">
+<main>
+<nav class="top" aria-label="Project"><b>gameRobotics</b><a href="index.html">Home</a><a href="progress.html">Progress</a><a href="plan.html">Plan</a><a href="product.html">Product</a><a href="architecture.html">Architecture</a><a href="cli.html" aria-current="page">CLI</a><a href="media.html">Media</a></nav>
+<div class="eyebrow"><span>Command line</span><span>generated from docs/cli.md</span></div><div class="doc"><h1 id="command-line-reference">Command-line reference</h1>
+<p class="prose">Every command in gameRobotics, with examples. The page <code>docs/cli.html</code> is generated from this file by <code>scripts/build-pages.py</code>; <code>scripts/check-docs.py</code> fails if a command or flag in the code is missing here. Exact behaviour (what <code>play</code> checks, every health message) is in the engine spec, <a href="spec.md">spec.md</a> §0.</p>
+<h2 id="quick-start">Quick start</h2>
+<pre>cd gamerobotics
+bin/gamerobotics setup lexjr        # once: builds gamerobotd, makes the Python environments
+bin/gamerobotics play lexjr         # the sim, the daemon, the camera and the app; Ctrl+C stops all</pre>
+<p class="prose">You need <a href="https://docs.astral.sh/uv">uv</a> and <a href="https://rustup.rs">Rust</a>. <code>setup</code> tells you if either is missing. The first <code>play</code> asks for camera access for your terminal.</p>
+<div class="table-wrap"><table><thead><tr><th>I want to…</th><th>run</th></tr></thead><tbody><tr><td>see LexJR follow my face</td><td><code>bin/gamerobotics play lexjr</code></td></tr><tr><td>try another personality</td><td><code>bin/gamerobotics play lexjr --personality shy-puppy</code></td></tr><tr><td>run without a window or the camera</td><td><code>bin/gamerobotics play lexjr --headless --no-camera</code></td></tr><tr><td>check everything is ready, without starting</td><td><code>bin/gamerobotics doctor lexjr</code></td></tr><tr><td>see what projects and personalities there are</td><td><code>bin/gamerobotics projects</code></td></tr><tr><td>move a joint by hand</td><td><code>gamerobotctl enable</code> then <code>gamerobotctl joints neck_pitch=20</code></td></tr><tr><td>watch the robot&#x27;s state</td><td><code>gamerobotctl watch --hz 5</code></td></tr></tbody></table></div>
+<h2 id="gamerobotics">gamerobotics</h2>
+<p class="prose">The command most people use. <code>bin/gamerobotics</code> needs only uv the first time: it makes a small Python environment for itself in <code>.venv</code>.</p>
+<h3 id="gamerobotics-play">gamerobotics play</h3>
+<p class="prose">Run a project: its processes start in order, each when the one before is ready, and they stop together.</p>
+<pre>bin/gamerobotics play lexjr
+bin/gamerobotics play lexjr --personality attentive-owl
+bin/gamerobotics play lexjr --headless --no-camera --seconds 20</pre>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>what it does</th></tr></thead><tbody><tr><td><code>--personality NAME</code></td><td>a personality from the project (<code>curious-cat</code>, <code>shy-puppy</code>, <code>attentive-owl</code>) or a path to a file; default: the project&#x27;s</td></tr><tr><td><code>--headless</code></td><td>no sim window (the sim still runs)</td></tr><tr><td><code>--no-camera</code></td><td>run without the webcam; the robot looks straight ahead</td></tr><tr><td><code>--seconds N</code></td><td>stop after N seconds</td></tr><tr><td><code>--verbose</code></td><td>show every process&#x27;s output as it happens, and a status line every 5 s</td></tr></tbody></table></div>
+<p class="prose">While it runs, it prints each problem it finds, with what to do, and &quot;fixed&quot; when it clears. It also prints a status line every 15 s:</p>
+<pre>  loop 50 Hz · 3.7 ms a tick · skipped 0.0/s · camera 27 fps · face yes · CPU 100%</pre>
+<p class="prose">It stops everything on Ctrl+C, when the sim window is closed, or when any process stops. Each process&#x27;s output is kept in <code>.runs/&lt;date-time&gt;/&lt;process&gt;.log</code> (the last 10 runs).</p>
+<p class="prose"><b>In the camera preview:</b> <code>m</code> switches the gaze between smooth follow and cat gaze, <code>c</code> makes your current distance the normal one, and <code>q</code> quits the camera.</p>
+<h3 id="gamerobotics-setup">gamerobotics setup</h3>
+<p class="prose">Make a project runnable. It only does what is missing, and says what it skips.</p>
+<pre>bin/gamerobotics setup lexjr
+bin/gamerobotics setup lexjr --upgrade      # reinstall the environments&#x27; packages</pre>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>what it does</th></tr></thead><tbody><tr><td><code>--rebuild</code></td><td>rebuild gamerobotd even if it is built</td></tr><tr><td><code>--upgrade</code></td><td>reinstall the packages in environments that already exist</td></tr></tbody></table></div>
+<h3 id="gamerobotics-doctor">gamerobotics doctor</h3>
+<p class="prose">The pre-start checks of <code>play</code>, without starting anything: the daemon is built, the environments exist, nothing else is running, the CPU isn&#x27;t throttled, and the camera gives pictures.</p>
+<pre>bin/gamerobotics doctor lexjr
+bin/gamerobotics doctor lexjr --no-camera</pre>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>what it does</th></tr></thead><tbody><tr><td><code>--no-camera</code></td><td>skip the camera check</td></tr></tbody></table></div>
+<h3 id="gamerobotics-projects">gamerobotics projects</h3>
+<p class="prose">List the projects in <code>projects/</code>, and their personalities.</p>
+<pre>$ bin/gamerobotics projects
+lexjr        LexJR  · personalities: attentive-owl, curious-cat, shy-puppy</pre>
+<h2 id="gamerobotctl">gamerobotctl</h2>
+<p class="prose">Talk to a running gamerobotd from a terminal: for checking, and for moving joints by hand. Angles are in degrees on this command line, and radians everywhere else.</p>
+<pre>target/release/gamerobotctl info                        # joints, limits, rate, what it drives
+target/release/gamerobotctl enable                      # torque on; holds the pose it&#x27;s in
+target/release/gamerobotctl joints neck_pitch=20 head_yaw=-15
+target/release/gamerobotctl watch --hz 5                # state, five times a second
+target/release/gamerobotctl disable                     # torque off</pre>
+<div class="table-wrap"><table><thead><tr><th>command</th><th>what it does</th></tr></thead><tbody><tr><td><code>info</code></td><td>the robot: name, rate, joints with limits and speeds, the IO and kinematics in use</td></tr><tr><td><code>state</code></td><td>one state frame (mode, positions, targets, tick time, skipped ticks)</td></tr><tr><td><code>enable</code></td><td>torque on; the robot holds the pose it is in</td></tr><tr><td><code>disable</code></td><td>torque off</td></tr><tr><td><code>joints name=deg …</code></td><td>move joints to these angles (joints mode)</td></tr><tr><td><code>watch</code></td><td>print state frames as they come; <code>--hz</code> sets the rate (default 5)</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>what it does</th></tr></thead><tbody><tr><td><code>--socket PATH</code></td><td>the daemon&#x27;s socket (default <code>/tmp/gamerobotd.sock</code>, or <code>GAMEROBOTD_SOCKET</code>)</td></tr><tr><td><code>--hz N</code></td><td>for <code>watch</code>: frames a second</td></tr></tbody></table></div>
+<p class="prose"><code>play</code> runs a daemon for you; <code>gamerobotctl</code> works alongside it.</p>
+<h2 id="gamerobotd">gamerobotd</h2>
+<p class="prose">The daemon: the robot&#x27;s 50 Hz loop. <code>play</code> starts it, so you only run it yourself to drive the robot directly or to develop the daemon.</p>
+<pre>target/release/gamerobotd --io fake                     # a robot that tracks perfectly
+target/release/gamerobotd --io sim                      # the simulator on 127.0.0.1:7600</pre>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>what it does</th><th>default</th></tr></thead><tbody><tr><td><code>--robot FILE</code></td><td>the robot file</td><td><code>robots/lexjr.toml</code></td></tr><tr><td><code>--io fake|sim</code></td><td>a perfect fake robot, or a simulator over TCP</td><td><code>fake</code></td></tr><tr><td><code>--sim ADDR</code></td><td>the simulator&#x27;s address, for <code>--io sim</code></td><td><code>127.0.0.1:7600</code></td></tr><tr><td><code>--sim-timeout-ms N</code></td><td>how long to wait for the simulator each call before reconnecting</td><td><code>2000</code></td></tr><tr><td><code>--socket PATH</code></td><td>the API socket</td><td><code>/tmp/gamerobotd.sock</code></td></tr><tr><td><code>--kinematics native|mujoco</code></td><td>the gaze kinematics; <code>mujoco</code> needs a build with <code>--features mujoco</code></td><td><code>native</code></td></tr></tbody></table></div>
+<h2 id="the-lexjr-processes-lexjr-sim">The LexJR processes (lexjr-sim)</h2>
+<p class="prose"><code>play</code> runs these with the right settings. Run them by hand only to work on one of them. Each runs from the <code>lexjr-sim</code> directory with its own environment.</p>
+<h3 id="body-server-py">body_server.py</h3>
+<p class="prose">The simulated body: MuJoCo, LexJR&#x27;s servo models, and the viewer.</p>
+<pre>.venv-bam/bin/mjpython body_server.py            # with the viewer
+.venv-bam/bin/python body_server.py --headless</pre>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>what it does</th></tr></thead><tbody><tr><td><code>--headless</code></td><td>no viewer</td></tr><tr><td><code>--host</code>, <code>--port</code></td><td>where gamerobotd connects (default <code>127.0.0.1:7600</code>)</td></tr><tr><td><code>--viz-port</code></td><td>UDP port for the face and gaze line to draw (default 7610)</td></tr></tbody></table></div>
+<p class="prose"><b>In the viewer:</b> <code>]</code> gives the side view, and <code>Esc</code> returns to the front view.</p>
+<h3 id="face-cam-py">face_cam.py</h3>
+<p class="prose">The webcam and face perception.</p>
+<pre>.venv-cam/bin/python face_cam.py
+.venv-cam/bin/python face_cam.py --check 2       # 2 s camera test: one JSON line, then exit</pre>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>what it does</th></tr></thead><tbody><tr><td><code>--camera N</code></td><td>which camera (OpenCV index; default 0)</td></tr><tr><td><code>--width</code>, <code>--height</code></td><td>the picture size (default 640 × 480)</td></tr><tr><td><code>--hfov DEG</code></td><td>the camera&#x27;s horizontal field of view, for distances (default 60)</td></tr><tr><td><code>--detector landmarks|box</code></td><td>the face landmarker (default) or the simpler box detector</td></tr><tr><td><code>--model FILE</code></td><td>the Face Landmarker model</td></tr><tr><td><code>--face-width M</code></td><td>the face width the box detector assumes</td></tr><tr><td><code>--port N</code></td><td>where faces are sent (UDP, default 5005)</td></tr><tr><td><code>--min-confidence X</code></td><td>for <code>--detector box</code></td></tr><tr><td><code>--no-preview</code></td><td>no preview window</td></tr><tr><td><code>--check SECONDS</code></td><td>test the camera and exit; prints opened, frames, failed reads, faces, fps</td></tr><tr><td><code>--stats-every S</code></td><td>how often to print a stats line for <code>play</code> (default 5)</td></tr></tbody></table></div>
+<h3 id="face-follow-py">face_follow.py</h3>
+<p class="prose">The app: LexJR&#x27;s behaviours, run by the behaviour Runner.</p>
+<pre>.venv-bam/bin/python face_follow.py --personality ../gamerobotics/projects/lexjr/personalities/shy-puppy.toml</pre>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>what it does</th></tr></thead><tbody><tr><td><code>--personality FILE</code></td><td>a personality file</td></tr><tr><td><code>--gaze smooth|cat</code></td><td>the gaze behaviour to start with (default: the personality&#x27;s)</td></tr><tr><td><code>--cat-seed N</code></td><td>make the cat&#x27;s choices repeatable</td></tr><tr><td><code>--verbose</code></td><td>print the cat&#x27;s state changes</td></tr><tr><td><code>--socket PATH</code></td><td>gamerobotd&#x27;s socket</td></tr><tr><td><code>--face-port N</code></td><td>where faces arrive (default 5005)</td></tr><tr><td><code>--viz-port N</code></td><td>the viewer&#x27;s drawing port (default 7610; 0 for none)</td></tr><tr><td><code>--hz N</code></td><td>how often to send intents (default 50)</td></tr></tbody></table></div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p class="prose"><code>play</code> and <code>doctor</code> print these. Each line says what&#x27;s wrong, then what to do.</p>
+<div class="table-wrap"><table><thead><tr><th>you see</th><th>it means</th><th>do</th></tr></thead><tbody><tr><td>The camera could not be opened</td><td>macOS hasn&#x27;t given your terminal camera access, or another app has the camera</td><td>System Settings → Privacy &amp; Security → Camera: allow your terminal; quit other camera apps</td></tr><tr><td>The camera opened but gave no pictures</td><td>another app is holding the camera</td><td>quit the app named (OBS, Zoom, FaceTime, Teams…), then run again</td></tr><tr><td>The camera is giving N pictures a second</td><td>the camera is starved</td><td>the same; or <code>--no-camera</code></td></tr><tr><td>The Mac is throttling its CPU to N%</td><td>it&#x27;s hot; the sim runs slower than real time (the motion is still right)</td><td>let it cool, close other apps, or use <code>--headless</code></td></tr><tr><td>The control loop is skipping N ticks a second</td><td>the computer can&#x27;t keep up</td><td>close other apps; let it cool</td></tr><tr><td>Ticks are taking N ms of their 20 ms</td><td>the loop is close to its limit</td><td>close other apps, or <code>--headless</code></td></tr><tr><td>The robot (or simulator) is not answering</td><td>the sim stopped or hung</td><td>start again; check <code>.runs/…/sim.log</code></td></tr><tr><td>No face in view</td><td>the camera works but sees no one</td><td>sit in front of it, with your face lit</td></tr><tr><td>Another gamerobotd is already running</td><td>an earlier run, or one you started</td><td>Ctrl+C it, or <code>pkill gamerobotd</code></td></tr><tr><td>Another simulator is already running (port 7600)</td><td>an earlier sim is still open</td><td>close its window, or <code>pkill -f body_server.py</code></td></tr><tr><td>gamerobotd isn&#x27;t built yet; an environment is missing</td><td>setup hasn&#x27;t run, or not fully</td><td><code>bin/gamerobotics setup &lt;project&gt;</code></td></tr><tr><td>The X isn&#x27;t ready: it stopped</td><td>a process failed to start</td><td>read the log lines shown, and its full log in <code>.runs/</code></td></tr></tbody></table></div></div>
+<footer>Generated by <code>scripts/build-pages.py</code> from <code>docs/plan.json</code> and git, 2026-10-20. Edit the JSON, then re-run the script.</footer>
+</main>

@@ -1,0 +1,479 @@
+<meta charset="utf-8">
+<title>gameRobotics Studio Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: the same field-guide family as architecture.html, with UI mockups set in window frames
+   ("the product as it would look"), each beside the flow or animation that explains it. */
+:root {
+  --bg: #EEF1F3; --surface: #FFFFFF; --ink: #15202B; --muted: #56636F; --rule: #CDD4DA;
+  --sensor: #237D75; --intent: #A8660F; --safety: #B4432F;
+  --panel: #121A22; --panel-ink: #E6E9EC; --code-bg: #E3E8EC;
+  --win: #F7F9FA; --win-bar: #DDE3E8; --view: #1B2631;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10171E; --surface: #17212B; --ink: #E4E8EC; --muted: #9AA7B3; --rule: #2A3743;
+    --sensor: #5CC2B7; --intent: #E8A33D; --safety: #EE7A62; --code-bg: #1C2833;
+    --win: #141D26; --win-bar: #1F2B37; --view: #0E151C; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10171E; --surface: #17212B; --ink: #E4E8EC; --muted: #9AA7B3; --rule: #2A3743;
+  --sensor: #5CC2B7; --intent: #E8A33D; --safety: #EE7A62; --code-bg: #1C2833;
+  --win: #141D26; --win-bar: #1F2B37; --view: #0E151C; color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 400 1rem/1.6 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1080px; margin: 0 auto; padding-block: 2.5rem 4rem; display: grid; gap: 3.5rem; }
+section { display: grid; gap: 1.1rem; min-width: 0; }
+.prose { max-width: 66ch; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.12; }
+h1 { font-size: clamp(2.3rem, 6vw, 3.6rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: clamp(1.5rem, 3.4vw, 2rem); font-weight: 600; }
+h3 { font-size: 1.1rem; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--sensor); }
+a:focus-visible, button:focus-visible, input:focus-visible, video:focus-visible { outline: 2px solid var(--intent); outline-offset: 3px; }
+.eyebrow { font: 500 0.75rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); display: flex; gap: 0.75rem; }
+code, kbd { font-family: var(--mono); font-size: 0.88em; }
+:not(pre) > code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 3px; }
+.lede { font-size: 1.2rem; max-width: 60ch; }
+.principles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.75rem; }
+.principles div { border-top: 2px solid var(--intent); padding-top: 0.5rem; font-size: 0.93rem; }
+.principles b { display: block; font-family: var(--display); font-size: 1.02rem; }
+
+/* The user flow: numbered because it is a real sequence. */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.6rem; counter-reset: f; }
+.flow li { counter-increment: f; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 0.7rem 0.8rem; min-width: 0; display: grid; gap: 0.2rem; align-content: start; }
+.flow li::before { content: counter(f); font: 600 1.4rem/1 var(--display); color: var(--intent); }
+.flow b { font-family: var(--display); font-size: 1.02rem; }
+.flow span { font-size: 0.84rem; color: var(--muted); }
+@media (max-width: 860px) { .flow { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+figure { margin: 0; display: grid; gap: 0.6rem; min-width: 0; }
+figcaption { font-size: 0.88rem; color: var(--muted); max-width: 70ch; }
+.film { background: var(--panel); border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9; max-width: 100%; }
+.film video { display: block; width: 100%; height: 100%; }
+.pair { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+@media (max-width: 860px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+
+/* Mockup windows */
+.window { background: var(--win); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; min-width: 0;
+  box-shadow: 0 8px 28px -18px rgba(10, 20, 30, 0.5); }
+.window .bar { background: var(--win-bar); display: flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.7rem; font: 500 0.75rem/1 var(--mono); color: var(--muted); }
+.window .bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--rule); display: inline-block; }
+.window .bar span { margin-left: 0.5rem; }
+.window .body { padding: 1rem; display: grid; gap: 0.9rem; }
+.mock-label { font: 500 0.7rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.btn { font: 600 0.9rem/1 var(--body); border-radius: 6px; padding: 0.6rem 0.95rem; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; }
+.btn.primary { background: var(--intent); border-color: var(--intent); color: #fff; }
+.chip { font: 500 0.8rem/1 var(--body); border: 1px solid var(--rule); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 0.4rem 0.75rem; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--intent); color: var(--intent); box-shadow: inset 0 0 0 1px var(--intent); }
+.badge { font: 500 0.7rem/1 var(--mono); border-radius: 3px; padding: 0.25em 0.45em; border: 1px solid currentColor; white-space: nowrap; }
+.ok { color: var(--sensor); } .warn { color: var(--intent); } .bad { color: var(--safety); } .dim { color: var(--muted); }
+
+/* Launcher */
+.templates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
+.tpl { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 0.7rem; display: grid; gap: 0.35rem; min-width: 0; }
+.tpl.sel { border-color: var(--intent); box-shadow: inset 0 0 0 1px var(--intent); }
+.tpl svg { width: 100%; height: 56px; }
+.tpl b { font-family: var(--display); }
+.tpl small { color: var(--muted); font-size: 0.78rem; }
+@media (max-width: 620px) { .templates { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.term { background: var(--panel); color: var(--panel-ink); border-radius: 6px; padding: 0.7rem 0.9rem; font: 400 0.82rem/1.6 var(--mono); overflow-x: auto; }
+.term .p { color: #E8A33D; } .term .g { color: #5CC2B7; }
+
+/* Studio */
+.studio { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 0.9rem; }
+@media (max-width: 760px) { .studio { grid-template-columns: minmax(0, 1fr); } }
+.viewport { background: var(--view); border-radius: 8px; aspect-ratio: 4 / 3; position: relative; overflow: hidden; }
+.viewport svg { width: 100%; height: 100%; display: block; }
+.toast { position: absolute; left: 0.7rem; right: 0.7rem; bottom: 0.7rem; background: rgba(16, 23, 30, 0.92); color: #E6E9EC; border-left: 3px solid #E8A33D;
+  border-radius: 6px; padding: 0.55rem 0.7rem; font-size: 0.82rem; display: flex; gap: 0.6rem; align-items: center; }
+.toast b { color: #E8A33D; font-weight: 600; }
+.panel { display: grid; gap: 0.8rem; align-content: start; min-width: 0; }
+.presets { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.slider { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.15rem 0.6rem; align-items: center; }
+.slider label { font-size: 0.86rem; }
+.slider output { font: 400 0.78rem/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--intent); }
+.slots { display: grid; gap: 0.35rem; }
+.slots div { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.85rem; border-bottom: 1px solid var(--rule); padding-bottom: 0.3rem; }
+.slots code { font-size: 0.8rem; }
+.health { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font: 400 0.78rem/1.4 var(--mono); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 0.6rem; }
+.health b { font-weight: 500; }
+
+/* Build */
+.archetypes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.6rem; }
+.arch { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 0.7rem; display: grid; gap: 0.25rem; align-content: start; min-width: 0; }
+.arch svg { width: 100%; height: 64px; color: var(--ink); }
+.arch b { font-family: var(--display); font-size: 1rem; }
+.arch small { color: var(--muted); font-size: 0.78rem; }
+.arch .badge { justify-self: start; margin-top: 0.2rem; }
+@media (max-width: 860px) { .archetypes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .archetypes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.chat { display: grid; gap: 0.55rem; }
+.msg { border-radius: 10px; padding: 0.6rem 0.75rem; font-size: 0.88rem; max-width: 92%; }
+.msg ul { margin: 0.35rem 0 0.35rem 1.1rem; padding: 0; }
+.msg.you { background: var(--intent); color: #fff; justify-self: end; }
+.msg.it { background: var(--surface); border: 1px solid var(--rule); }
+.msg.warn-msg { border-left: 3px solid var(--sensor); }
+.ask { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; border: 1px solid var(--rule); border-radius: 8px; padding: 0.4rem 0.4rem 0.4rem 0.75rem; background: var(--surface); font-size: 0.88rem; }
+.snapview { aspect-ratio: 400 / 260; }
+.tray { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.part-chip { font: 500 0.78rem/1 var(--mono); border: 1px solid var(--rule); background: var(--surface); border-radius: 5px; padding: 0.35rem 0.55rem; }
+.part-chip.sel { border-color: var(--intent); color: var(--intent); }
+
+/* Builder */
+.builder { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr); gap: 0.9rem; }
+@media (max-width: 760px) { .builder { grid-template-columns: minmax(0, 1fr); } }
+.parts { display: grid; gap: 0.4rem; align-content: start; }
+.part { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 0.5rem 0.6rem; font-size: 0.85rem; display: grid; gap: 0.1rem; }
+.part small { color: var(--muted); font: 400 0.74rem/1.3 var(--mono); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
+th, td { text-align: left; padding: 0.45rem 0.65rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font: 600 0.72rem/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.derived { color: var(--sensor); font-family: var(--mono); font-size: 0.78rem; }
+
+/* Wizard + deploy */
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+@media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.steps { display: flex; gap: 0.3rem; }
+.steps i { flex: 1; height: 5px; border-radius: 3px; background: var(--rule); }
+.steps i.done { background: var(--sensor); } .steps i.now { background: var(--intent); }
+.readout { font: 500 1.8rem/1 var(--mono); font-variant-numeric: tabular-nums; }
+.targets { display: grid; gap: 0.45rem; }
+.target { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 0.55rem 0.7rem; font-size: 0.88rem; }
+.target.sel { border-color: var(--intent); box-shadow: inset 0 0 0 1px var(--intent); }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; font-size: 0.85rem; }
+
+.roadmap { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.6rem; }
+.phase { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 0.75rem; display: grid; gap: 0.3rem; align-content: start; min-width: 0; font-size: 0.86rem; }
+.phase .n { font: 600 0.75rem/1 var(--mono); color: var(--intent); letter-spacing: 0.08em; }
+.phase b { font-family: var(--display); font-size: 1.02rem; }
+@media (max-width: 860px) { .roadmap { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
+</style>
+
+<main>
+  <header style="display:grid;gap:1.1rem">
+    <div class="eyebrow"><span>gameRobotics</span><span>·</span><span>product spec, draft v0.2</span><span>·</span><span>2026-10-20</span></div>
+    <h1>Robotics, without the pipeline</h1>
+    <p class="lede">What game engines did for games, we do for robotics: drivers, calibration, simulation, timing and sim-to-real disappear, and what's left is the fun part. Making a robot come alive. These are mockups of how that should feel. Nothing on this page is built yet except the engine underneath.</p>
+    <div class="principles">
+      <div><b>First wiggle under 10 minutes</b>One command, no hardware: a robot on your screen that sees you.</div>
+      <div><b>Sim and real are one project</b>Deploying is a target switch, not a port.</div>
+      <div><b>Everything live</b>Tune while it runs; save when it feels right.</div>
+      <div><b>Safe by construction</b>Nothing you write can push the robot past its limits.</div>
+      <div><b>It explains itself</b>"Camera busy: OBS is using it." Plain words, with the fix.</div>
+      <div><b>General by parts</b>Robots from known parts; behaviours target capabilities.</div>
+    </div>
+  </header>
+
+  <section id="flow">
+    <div class="eyebrow"><span>User flow</span></div>
+    <h2>From install to your own robot</h2>
+    <ol class="flow">
+      <li><b>Play</b><span>one command; the sim robot looks at you</span></li>
+      <li><b>Shape</b><span>pick a personality, tune it live</span></li>
+      <li><b>Compose</b><span>choose what runs in each slot</span></li>
+      <li><b>Build</b><span>something new from a kit: describe it or snap it</span></li>
+      <li><b>Deploy</b><span>plug in, calibrate, same project</span></li>
+      <li><b>Share</b><span>a personality or behaviour as a file</span></li>
+    </ol>
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/FirstWiggle.mp4" poster="animations/FirstWiggle.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation: today's four terminals are replaced by one command, then a ten-minute timeline from install to a saved personality"></video></div>
+        <figcaption>Today it takes four terminals and three Python environments. The goal is one command, then a saved personality inside ten minutes.</figcaption>
+      </figure>
+      <div class="window" aria-label="Mockup: the launcher">
+        <div class="bar"><i></i><i></i><i></i><span>gameRobotics · new project</span></div>
+        <div class="body">
+          <div class="mock-label">Play a ready-made robot</div>
+          <div class="templates">
+            <div class="tpl"><svg viewBox="0 0 120 56" aria-hidden="true"><rect x="45" y="36" width="30" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="50" y="14" width="20" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="60" cy="24" r="4" fill="currentColor"/></svg><b>Pan-tilt head</b><small>2 servos · webcam</small></div>
+            <div class="tpl sel"><svg viewBox="0 0 120 56" aria-hidden="true"><ellipse cx="60" cy="46" rx="22" ry="7" fill="none" stroke="currentColor" stroke-width="2"/><line x1="60" y1="40" x2="60" y2="22" stroke="currentColor" stroke-width="3"/><path d="M44 22 Q60 6 76 22 Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="60" cy="17" r="3" fill="currentColor"/></svg><b>LexJR</b><small>6 servos · 3:1 gear</small></div>
+            <div class="tpl"><svg viewBox="0 0 120 56" aria-hidden="true"><rect x="30" y="44" width="24" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M42 44 L50 22 L78 14 L90 26" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="90" cy="28" r="3" fill="currentColor"/></svg><b>Arm</b><small>6 servos · wrist camera</small></div>
+            <div class="tpl"><svg viewBox="0 0 120 56" aria-hidden="true"><rect x="36" y="18" width="48" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M40 32 L36 50 M52 32 L56 50 M70 32 L66 50 M80 32 L84 50" stroke="currentColor" stroke-width="2"/></svg><b>Quadruped</b><small class="dim">later</small></div>
+            <div class="tpl"><svg viewBox="0 0 120 56" aria-hidden="true"><ellipse cx="60" cy="44" rx="20" ry="8" fill="none" stroke="currentColor" stroke-width="2"/><rect x="44" y="16" width="32" height="18" rx="9" fill="none" stroke="currentColor" stroke-width="2"/><line x1="50" y1="16" x2="46" y2="4" stroke="currentColor" stroke-width="2"/><line x1="70" y1="16" x2="74" y2="4" stroke="currentColor" stroke-width="2"/></svg><b>Reachy Mini</b><small>import</small></div>
+            <div class="tpl"><svg viewBox="0 0 120 56" aria-hidden="true"><ellipse cx="60" cy="26" rx="16" ry="12" fill="none" stroke="currentColor" stroke-width="2"/><path d="M52 38 L48 52 M68 38 L72 52" stroke="currentColor" stroke-width="2"/><path d="M76 22 L88 24" stroke="currentColor" stroke-width="2"/></svg><b>microduck</b><small>import</small></div>
+          </div>
+          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center">
+            <button class="btn primary" type="button">Play in sim</button>
+            <button class="btn" type="button">Build something new…</button>
+            <button class="btn" type="button">Open project…</button>
+            <span class="dim" style="font-size:0.82rem">or <code>gamerobotics play lexjr</code></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="studio">
+    <div class="eyebrow"><span>Shape</span><span>the studio</span></div>
+    <h2>Give it a personality, live</h2>
+    <p class="prose">The studio is one local browser page: the robot as it runs, its personality as presets and sliders, the slots, and a health bar that says what's wrong in plain words. Try the presets and sliders below. They're a mockup and aren't connected to a robot.</p>
+    <div class="window" aria-label="Mockup: the studio">
+      <div class="bar"><i></i><i></i><i></i><span>Studio · lexjr · sim</span></div>
+      <div class="body">
+        <div class="studio">
+          <div class="viewport">
+            <svg viewBox="0 0 400 300" role="img" aria-label="The robot on screen, looking at a face wireframe, with its line of sight drawn">
+              <defs><linearGradient id="fl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22303d"/><stop offset="1" stop-color="#16212b"/></linearGradient></defs>
+              <rect width="400" height="300" fill="url(#fl)"/>
+              <g stroke="#2A3743" stroke-width="1">
+                <line x1="0" y1="230" x2="400" y2="230"/><line x1="40" y1="300" x2="150" y2="230"/><line x1="200" y1="300" x2="200" y2="230"/><line x1="360" y1="300" x2="250" y2="230"/>
+              </g>
+              <ellipse cx="150" cy="232" rx="58" ry="14" fill="#C9CDD0"/><rect x="92" y="200" width="116" height="32" fill="#D9DCDF"/><ellipse cx="150" cy="200" rx="58" ry="14" fill="#E9EBED"/>
+              <rect x="140" y="140" width="20" height="62" fill="#3A444D"/>
+              <g id="head" transform="rotate(-8 150 128)"><path d="M108 140 Q150 92 192 140 Z" fill="#7F8A93"/><rect x="104" y="138" width="92" height="6" fill="#D24A3A"/><circle cx="160" cy="124" r="10" fill="#E8C531"/><circle cx="160" cy="124" r="5" fill="#111"/></g>
+              <line id="gaze" x1="164" y1="122" x2="318" y2="92" stroke="#E8A33D" stroke-width="2.5"/>
+              <g fill="none" stroke="#5CC2B7" stroke-width="1.4" opacity="0.9">
+                <ellipse cx="322" cy="96" rx="34" ry="44"/><ellipse cx="310" cy="84" rx="8" ry="4"/><ellipse cx="336" cy="84" rx="8" ry="4"/>
+                <path d="M316 116 Q323 121 330 116"/><path d="M323 90 L321 104 L326 104"/>
+              </g>
+            </svg>
+            <div class="toast" role="status"><b>Camera busy</b><span>OBS is using the webcam. Quit OBS, and the robot will see you again.</span></div>
+          </div>
+          <div class="panel">
+            <div>
+              <div class="mock-label">Personality</div>
+              <div class="presets" style="margin-top:0.45rem">
+                <button class="chip" type="button" data-preset="cat" aria-pressed="true">Curious Cat</button>
+                <button class="chip" type="button" data-preset="puppy" aria-pressed="false">Shy Puppy</button>
+                <button class="chip" type="button" data-preset="owl" aria-pressed="false">Attentive Owl</button>
+              </div>
+            </div>
+            <div class="slider"><label for="s-react">Curiosity: how fast it reacts</label><output id="o-react" for="s-react"></output><input id="s-react" type="range" min="0.05" max="1" step="0.05" value="0.2" data-unit=" s"></div>
+            <div class="slider"><label for="s-cone">Attention: how far you move before it looks</label><output id="o-cone" for="s-cone"></output><input id="s-cone" type="range" min="2" max="20" step="1" value="5" data-unit="°"></div>
+            <div class="slider"><label for="s-dart">Restlessness: darts per second</label><output id="o-dart" for="s-dart"></output><input id="s-dart" type="range" min="0" max="4" step="0.1" value="2.4" data-unit="/s"></div>
+            <div class="slider"><label for="s-tilt">Expressiveness: how much it mirrors your tilt</label><output id="o-tilt" for="s-tilt"></output><input id="s-tilt" type="range" min="0" max="1.5" step="0.1" value="1" data-unit="×"></div>
+            <div class="slider"><label for="s-lean">Sociability: how strongly it keeps its distance</label><output id="o-lean" for="s-lean"></output><input id="s-lean" type="range" min="0" max="3" step="0.1" value="1.5" data-unit="°/cm"></div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap"><button class="btn primary" type="button">Save as mine</button><button class="btn" type="button">Record</button></div>
+            <div>
+              <div class="mock-label">Slots</div>
+              <div class="slots" style="margin-top:0.45rem">
+                <div><span>gaze</span><code id="gaze-owner">CatGaze</code></div>
+                <div><span>lean</span><code>KeepDistance</code></div>
+                <div><span>tilt</span><code>MimicTilt</code></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="health">
+          <span><b class="ok">●</b> loop 50 Hz · 4.1 ms</span><span><b class="ok">●</b> missed 3</span><span><b class="bad">●</b> camera: busy (OBS)</span><span><b class="warn">●</b> CPU 60%: warm</span><span><b class="ok">●</b> face: none</span>
+        </div>
+      </div>
+    </div>
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/Personalities.mp4" poster="animations/Personalities.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation: two cat gaze presets, Curious Cat and Shy Puppy, on the same moving face"></video></div>
+        <figcaption>The real CatGaze with two of the proposed presets, on the same moving face. Curious Cat reacts and darts quickly; Shy Puppy waits, then lingers.</figcaption>
+      </figure>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Preset</th><th>Gaze</th><th>Feel</th></tr></thead>
+          <tbody>
+            <tr><td>Curious Cat</td><td>CatGaze</td><td>react 0.1–0.3 s, cone 5°, quick darts</td></tr>
+            <tr><td>Shy Puppy</td><td>CatGaze</td><td>react 0.4–0.8 s, cone 12°, long stares, leans back more</td></tr>
+            <tr><td>Attentive Owl</td><td>SmoothFollow</td><td>calm and steady, a gentle tilt</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="build">
+    <div class="eyebrow"><span>Build</span><span>a kit of parts</span></div>
+    <h2>Start something new</h2>
+    <p class="prose">Build is meant to inspire new robots, not tweaks to old ones. You start from a <b>kit</b>: a small set of characterized parts that snap together, so anything you make simulates accurately and can be built for real. Pick a kind of robot to start from, then assemble it by describing it, by snapping parts together, or both. The two ways edit the same robot file.</p>
+
+    <div class="mock-label">Archetypes: kinds of robot to start from</div>
+    <div class="archetypes">
+      <div class="arch"><svg viewBox="0 0 120 70" aria-hidden="true"><rect x="45" y="48" width="30" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="48" y="20" width="24" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="60" cy="32" r="5" fill="currentColor"/></svg><b>Personality head</b><small>servos, webcam</small><small>gaze · lean · tilt</small><span class="badge ok">runs today</span></div>
+      <div class="arch"><svg viewBox="0 0 120 70" aria-hidden="true"><circle cx="40" cy="56" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="80" cy="56" r="10" fill="none" stroke="currentColor" stroke-width="2"/><rect x="46" y="20" width="28" height="32" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="52" y="8" width="16" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2"/></svg><b>Balancing robot</b><small>2 servos as wheels, IMU</small><small>balance · drive · gaze</small><span class="badge warn">phase 2</span></div>
+      <div class="arch"><svg viewBox="0 0 120 70" aria-hidden="true"><rect x="34" y="22" width="52" height="16" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M40 38 L34 52 L38 64 M54 38 L58 52 L54 64 M70 38 L66 52 L70 64 M82 38 L88 52 L84 64" fill="none" stroke="currentColor" stroke-width="2"/><rect x="84" y="12" width="14" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2"/></svg><b>Legged robot</b><small>6–12 servos, IMU</small><small>locomotion · gaze</small><span class="badge dim">later</span></div>
+      <div class="arch"><svg viewBox="0 0 120 70" aria-hidden="true"><rect x="30" y="38" width="60" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="40" cy="58" r="7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="80" cy="58" r="7" fill="none" stroke="currentColor" stroke-width="2"/><line x1="60" y1="38" x2="60" y2="16" stroke="currentColor" stroke-width="2"/><circle cx="60" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/></svg><b>Mobile robot</b><small>servos as wheels, webcam</small><small>drive · gaze</small><span class="badge dim">later</span></div>
+      <div class="arch"><svg viewBox="0 0 120 70" aria-hidden="true"><rect x="28" y="56" width="26" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M41 56 L48 30 L78 20 L92 34" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="92" cy="37" r="4" fill="currentColor"/></svg><b>Arm</b><small>4–6 servos, webcam</small><small>gaze · reach</small><span class="badge dim">later</span></div>
+    </div>
+
+    <div class="two">
+      <div class="window" aria-label="Mockup: describing a robot to the LLM builder">
+        <div class="bar"><i></i><i></i><i></i><span>Build · describe</span></div>
+        <div class="body">
+          <div class="chat">
+            <div class="msg you">A little robot that balances on two wheels and looks around with a camera on a pan-tilt head.</div>
+            <div class="msg it">Starting from the <b>balancing</b> archetype, with kit parts only:
+              <ul>
+                <li>2 servos in wheel mode, with wheels: balance and drive</li>
+                <li>an IMU in the body: balancing needs it</li>
+                <li>2 servos and a webcam on top: a pan-tilt head for gaze</li>
+                <li>a battery and the controller board</li>
+              </ul>
+              It passes every check. Want the head taller, or a tail for balance?</div>
+            <div class="msg you">Make the head taller.</div>
+            <div class="msg it warn-msg"><b>Check:</b> a 12 cm mast raises the centre of mass; the wheel servos still have the torque. Updated, and it still balances in the sim.</div>
+          </div>
+          <div class="ask"><span class="dim">Describe a change…</span><button class="btn primary" type="button">Send</button></div>
+        </div>
+      </div>
+      <div class="window" aria-label="Mockup: snapping parts together in the interactive builder">
+        <div class="bar"><i></i><i></i><i></i><span>Build · snap</span></div>
+        <div class="body">
+          <div class="viewport snapview">
+            <svg viewBox="0 0 400 260" role="img" aria-label="A two-wheeled robot being assembled; a webcam is being dragged onto the head mount, which glows">
+              <rect width="400" height="260" fill="#16212b"/>
+              <line x1="0" y1="226" x2="400" y2="226" stroke="#2A3743"/>
+              <circle cx="150" cy="200" r="24" fill="none" stroke="#9AA7B3" stroke-width="3"/><circle cx="250" cy="200" r="24" fill="none" stroke="#9AA7B3" stroke-width="3"/>
+              <rect x="168" y="186" width="24" height="18" rx="3" fill="#5CC2B7" opacity="0.8"/><rect x="208" y="186" width="24" height="18" rx="3" fill="#5CC2B7" opacity="0.8"/>
+              <rect x="170" y="110" width="60" height="76" rx="8" fill="#2A3743" stroke="#9AA7B3"/>
+              <rect x="186" y="140" width="28" height="16" rx="3" fill="#EE7A62" opacity="0.85"/><text x="200" y="152" fill="#10171E" font-size="10" text-anchor="middle" font-family="Menlo, monospace">IMU</text>
+              <rect x="194" y="80" width="12" height="30" fill="#9AA7B3"/>
+              <rect x="186" y="62" width="28" height="18" rx="3" fill="#5CC2B7" opacity="0.8"/>
+              <rect x="186" y="42" width="28" height="18" rx="3" fill="none" stroke="#E8A33D" stroke-width="2" stroke-dasharray="4 3"/>
+              <g transform="translate(290 34)"><rect width="36" height="24" rx="4" fill="#E8A33D"/><circle cx="18" cy="12" r="6" fill="#10171E"/></g>
+              <path d="M290 46 Q250 40 216 50" fill="none" stroke="#E8A33D" stroke-width="1.5" stroke-dasharray="3 3"/>
+              <text x="300" y="80" fill="#E8A33D" font-size="12" font-family="Helvetica, sans-serif">snaps here</text>
+            </svg>
+          </div>
+          <div class="tray"><span class="part-chip">servo</span><span class="part-chip">spur 3:1</span><span class="part-chip">wheel</span><span class="part-chip">bracket</span><span class="part-chip">IMU</span><span class="part-chip sel">webcam</span><span class="part-chip">battery</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:0.4rem"><span class="badge ok">balance ✓</span><span class="badge ok">drive ✓</span><span class="badge warn">gaze: add a camera</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/KitBuild.mp4" poster="animations/KitBuild.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation: a description becomes a two-wheeled balancing robot assembled from kit parts, the checks pass and its capabilities light up"></video></div>
+        <figcaption>A description becomes a robot: the LLM picks kit parts, they snap together, every check runs, and its capabilities light up.</figcaption>
+      </figure>
+      <div class="prose" style="font-size:0.95rem;display:grid;gap:0.6rem">
+        <p><b>The LLM can only use the kit.</b> It works through three tools, "add part", "connect" and "check", so it can't invent a part, and nothing runs until the checks pass.</p>
+        <p><b>Each archetype brings its motion once.</b> A personality head uses MotionCore, which exists. Balancing needs a <code>balance</code> primitive, legged robots a policy, mobile robots a <code>drive</code> primitive. Each is built once, and then every robot of that kind has it.</p>
+      </div>
+    </div>
+
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/PartsToRobot.mp4" poster="animations/PartsToRobot.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation: a servo and a 3:1 gear become a joint, and its range, speed, sim model and driver settings are derived"></video></div>
+        <figcaption>What the checks build on: limits are derived from parts, not typed. LexJR's ±57° torso is 360° through 3:1, less a margin.</figcaption>
+      </figure>
+      <div class="prose" style="font-size:0.95rem;display:grid;gap:0.6rem">
+        <p><b>Characterize once, inherit everywhere.</b> A part is a data file: its BAM model, latency, limits and how to find its zero. Adding one is a bench procedure, not code.</p>
+        <p><b>Capabilities come from the assembly.</b> An IMU and two wheels make <code>balance</code>; a camera on a chain of joints makes <code>gaze</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="capabilities">
+    <div class="eyebrow"><span>Capabilities</span><span>and integrations</span></div>
+    <h2>One behaviour, many robots</h2>
+    <div class="pair">
+      <figure>
+        <div class="film"><video src="animations/CapabilityMatch.mp4" poster="animations/CapabilityMatch.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation: a matrix of behaviours against robots, showing which can run where from the capabilities each robot has"></video></div>
+        <figcaption>Behaviours say what they need; robots say what they have. Where a robot's capability is weaker, such as no saccades on Reachy Mini, the behaviour adapts.</figcaption>
+      </figure>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Integration</th><th>How</th><th>v1</th></tr></thead>
+          <tbody>
+            <tr><td>Our behaviours on Reachy Mini and microduck</td><td>adapters speaking their protocols (Zenoh; JSON-RPC to <code>robotd</code>)</td><td><span class="badge ok">yes</span></td></tr>
+            <tr><td>Their robots in our sim</td><td>import their MuJoCo models; their actuators as catalogue parts</td><td><span class="badge ok">yes</span></td></tr>
+            <tr><td>microduck policies, Reachy Mini apps on our robots</td><td>their policy format; a Zenoh bridge</td><td><span class="badge dim">later</span></td></tr>
+            <tr><td>Our daemon on their hardware</td><td>a <code>RobotIo</code> for their buses</td><td><span class="badge dim">research</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="deploy">
+    <div class="eyebrow"><span>Deploy</span></div>
+    <h2>Plug in, calibrate, same project</h2>
+    <div class="two">
+      <div class="window" aria-label="Mockup: the calibration wizard">
+        <div class="bar"><i></i><i></i><i></i><span>Calibrate · lexjr · step 3 of 6</span></div>
+        <div class="body">
+          <div class="steps"><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i><i></i></div>
+          <h3>Turn the neck until the marks line up</h3>
+          <p style="font-size:0.9rem">Torque is off on this joint so you can move it by hand. Line up the mark on the neck with the mark on the torso, then press Next.</p>
+          <div style="display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap"><span class="readout">2051</span><span class="dim" style="font-size:0.85rem">servo 2, ticks · found on the bus, 1 Mbit/s</span></div>
+          <div style="display:flex;gap:0.5rem"><button class="btn" type="button">Back</button><button class="btn primary" type="button">Next</button></div>
+        </div>
+      </div>
+      <div class="window" aria-label="Mockup: choosing where to run">
+        <div class="bar"><i></i><i></i><i></i><span>Run on</span></div>
+        <div class="body">
+          <div class="targets">
+            <div class="target"><span>Simulator</span><span class="badge ok">ready</span></div>
+            <div class="target sel"><span>LexJR on /dev/cu.usbserial-110</span><span class="badge ok">calibrated</span></div>
+            <div class="target"><span>Reachy Mini (adapter)</span><span class="badge dim">not found</span></div>
+          </div>
+          <ul class="checks">
+            <li class="ok">✓ 6 of 6 servos answering</li>
+            <li class="ok">✓ supply 7.4 V</li>
+            <li class="ok">✓ personality "Curious Cat" fits this robot's capabilities</li>
+            <li class="warn">! servo 4 at 51 °C: fine, but warm</li>
+          </ul>
+          <button class="btn primary" type="button" style="justify-self:start">Run on LexJR</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap">
+    <div class="eyebrow"><span>Roadmap</span></div>
+    <h2>In this order</h2>
+    <div class="roadmap">
+      <div class="phase"><span class="n">PHASE 1</span><b>Play and shape</b><span>One command, the studio, presets, plain-word health.</span></div>
+      <div class="phase"><span class="n">PHASE 2</span><b>The kit and the builder</b><span>Describe or snap from the kit; capabilities and <code>needs</code>; personality heads and balancing robots in sim.</span></div>
+      <div class="phase"><span class="n">PHASE 3</span><b>Real hardware</b><span>FeetechIo, the calibration wizard, deploy.</span></div>
+      <div class="phase"><span class="n">PHASE 4</span><b>Integrations</b><span>Reachy Mini and microduck: models, then adapters.</span></div>
+      <div class="phase"><span class="n">PHASE 5</span><b>Further</b><span>Legged, mobile and arm archetypes; a browser link; sharing.</span></div>
+    </div>
+  </section>
+
+  <footer><a href="index.html">Project home</a> · <a href="media.html">All explainer videos</a> · From <code>docs/product-spec.md</code> (draft v0.2). The engine it builds on: <code>docs/architecture.html</code>. Animations from <code>docs/animations/scenes.py</code> (manim); the personality animation runs the real CatGaze.</footer>
+</main>
+
+<script>
+// Mockup only: presets move the sliders; sliders show their values. Nothing is connected to a robot.
+(() => {
+  const presets = {
+    cat:   { react: 0.2, cone: 5,  dart: 2.4, tilt: 1.0, lean: 1.5, gaze: "CatGaze" },
+    puppy: { react: 0.6, cone: 12, dart: 1.1, tilt: 1.2, lean: 2.0, gaze: "CatGaze" },
+    owl:   { react: 0.3, cone: 8,  dart: 0.2, tilt: 0.5, lean: 1.0, gaze: "SmoothFollow" },
+  };
+  const ids = ["react", "cone", "dart", "tilt", "lean"];
+  const show = (id) => {
+    const s = document.getElementById("s-" + id), o = document.getElementById("o-" + id);
+    if (s && o) o.value = s.value + (s.dataset.unit || "");
+  };
+  ids.forEach((id) => {
+    const s = document.getElementById("s-" + id);
+    if (s) s.addEventListener("input", () => show(id));
+    show(id);
+  });
+  document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => {
+    const p = presets[b.dataset.preset];
+    ids.forEach((id) => { const s = document.getElementById("s-" + id); if (s) { s.value = p[id]; show(id); } });
+    document.getElementById("gaze-owner").textContent = p.gaze;
+    document.querySelectorAll("[data-preset]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce || !("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting ? e.target.play().catch(() => {}) : e.target.pause()), { threshold: 0.5 });
+  document.querySelectorAll("video").forEach((v) => io.observe(v));
+})();
+</script>

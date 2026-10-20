@@ -1,0 +1,70 @@
+{
+  "about": "Narration for the ArchitectureTour scene in scenes.py, one entry per step. scripts/voiceover.py turns each into docs/animations/voice/<id>.mp3; the scene waits for each clip. Change the words here, then run scripts/voiceover.py and docs/build.sh ArchitectureTour. 'covers' lists the overview diagram's blocks (architecture.md) the video shows, and 'planned' the dashed ones; scripts/check-docs.py fails when the diagram and these disagree.",
+  "covers": [
+    "CTL",
+    "GRC",
+    "DASH",
+    "WEBCAM",
+    "CAM",
+    "CTRLAPI",
+    "RUNNER",
+    "BEH",
+    "API",
+    "WS",
+    "LOOP",
+    "PUB",
+    "IO",
+    "BODY",
+    "SERVOS",
+    "VIEW"
+  ],
+  "planned": [
+    "DASH",
+    "CTRLAPI",
+    "WS",
+    "PUB",
+    "SERVOS"
+  ],
+  "steps": [
+    {
+      "id": "intro",
+      "text": "This is the gameRobotics architecture, built up one block at a time. Solid borders are running today. Dashed borders are planned."
+    },
+    {
+      "id": "loop",
+      "text": "At the centre is gamerobotd, the daemon, written in Rust. Its control loop ticks fifty times a second. Each tick, the controller and MotionCore turn what the robot wants into smooth joint targets, and Safety is the only thing allowed to write to the motors."
+    },
+    {
+      "id": "body",
+      "text": "The loop talks to a body through one seam, called RobotIo. Today that body is the simulator: MuJoCo, with measured servo models, over a TCP socket, once per tick. On real hardware, the same seam becomes a servo driver, and nothing above it changes."
+    },
+    {
+      "id": "api",
+      "text": "Everything else reaches the daemon through its API: JSON-RPC, over a local socket."
+    },
+    {
+      "id": "app",
+      "text": "Apps are written in Python. The Runner hosts behaviours, like smooth follow, cat gaze, keep distance and mimic tilt. Each body part has one owner at a time, and the Runner sends the daemon intents, such as look at this point, up to fifty times a second."
+    },
+    {
+      "id": "perception",
+      "text": "Perception is its own process. face cam reads the webcam, finds your face with MediaPipe, and sends where it is to the app, about thirty times a second."
+    },
+    {
+      "id": "viewer",
+      "text": "The simulator draws the robot in a viewer, and the app adds your face and the robot's line of sight, so you can see what it's thinking."
+    },
+    {
+      "id": "clients",
+      "text": "On top are the tools. gamerobotctl pokes the daemon directly. The gamerobotics command starts every process in order, watches their health, and stops them together."
+    },
+    {
+      "id": "planned",
+      "text": "Next comes the addressable API: a WebSocket on the daemon, a publisher that streams state and timing, and control and status APIs for the app and supervisor. Then a Tauri dashboard, like Reachy Mini's, built only on those APIs. And the servo driver, for the real robot."
+    },
+    {
+      "id": "rule",
+      "text": "That is the key rule. Every client talks to the robot by address, never by being on the same machine. So moving from a laptop to a robot with its own Pi is a new address, not a rewrite."
+    }
+  ]
+}

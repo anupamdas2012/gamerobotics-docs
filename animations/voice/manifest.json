@@ -1,0 +1,52 @@
+{
+ "intro": {
+  "key": "fb515631a2dd",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 8.081
+ },
+ "loop": {
+  "key": "98140993b691",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 15.697
+ },
+ "body": {
+  "key": "88c935321fc9",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 18.158
+ },
+ "api": {
+  "key": "a3877368b442",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 5.294
+ },
+ "app": {
+  "key": "a1d8e1dbe0a7",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 17.276
+ },
+ "perception": {
+  "key": "d95b7d4919ed",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 9.892
+ },
+ "viewer": {
+  "key": "1e30e1a52ea6",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 7.57
+ },
+ "clients": {
+  "key": "bab233996caa",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 9.52
+ },
+ "planned": {
+  "key": "8dd61c130ba8",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 17.229
+ },
+ "rule": {
+  "key": "5f315cfcaa16",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 11.564
+ }
+}
