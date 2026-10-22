@@ -1,6 +1,6 @@
 # gameRobotics architecture
 
-Status: current as of 2026-10-21 (gamerobotics `74cdace`, lexjr-sim `db5ca29`).
+Status: current as of 2026-10-22 (gamerobotics `5c506b7`, lexjr-sim `4b57cbf`).
 What the system does, feature by feature, is in [spec.md](spec.md); how an app and its
 behaviours are built is in [app-architecture.md](app-architecture.md); what we're building on the
 engine, and for whom, is in [product-spec.md](product-spec.md). The illustrated version, with
@@ -10,8 +10,8 @@ animations, is [architecture.html](architecture.html). All three are kept curren
 ## Goal
 
 One robot daemon for every gameRobotics robot, built so a learned (RL) policy behaves on the
-robot as it did in simulation. The first robot is LexJR, a six-joint desk robot with a head; two
-more run on the same daemon already (a pan tilt, and a two-wheeled rover); the next is a legged
+robot as it did in simulation. The first robot is LexJR, a six-joint desk robot with a head; three
+more run on the same daemon already (a pan tilt, a two-wheeled rover, and the two combined); the next is a legged
 robot. Latency and determinism decide the design: everything that closes a
 control loop runs inside one 50 Hz tick, in one process, on the measurements that tick just took.
 
@@ -102,7 +102,9 @@ the same dashboard can later point at a robot with its own Pi. A narrated video 
 | `gamerobotics` (`bin/`, `python/gamerobotics/play.py`) | gamerobotics | Python | nothing of the robot: starts a project's processes in order, watches their health, stops them together |
 | `gamerobotctl` | gamerobotics | Rust | nothing: a command line over the API |
 | `body_server.py` | lexjr-sim | Python | the robot's simulated body (LexJR, or the robot `LEXJR_ROBOT` names): MuJoCo + BAM servo models, the viewer |
-| `face_cam.py` | lexjr-sim | Python | the webcam and face perception (MediaPipe); pixels never leave it |
+| `face_cam.py` | lexjr-sim | Python | the webcam and face perception (MediaPipe); pixels never leave it; `--record` captures a face |
+| `face_replay.py` | lexjr-sim | Python | the camera's stand-in: a face capture played back with its timing (`play --mocap`) |
+| `recorder.py` | lexjr-sim | Python | films the simulation from the body's published state, off screen, in body time |
 | `face_follow.py` | lexjr-sim | Python | a behaviour Runner: LexJR's behaviours (smooth follow or cat gaze, keep distance, mimic tilt) turn faces into intents |
 
 ## Behaviours: the app layer
@@ -120,8 +122,8 @@ what to do and when, from what the robot sees, and is a plugin.
 
 **Intents are body-neutral.** They say what to do, never how a body does it: `look_at` is a world
 point, `approach` metres toward it. LexJR reaches them with its neck and a lean, the pan tilt with
-two servos, the rover by turning and driving. So a behaviour, and a personality's numbers, run
-unchanged on all three; how a body does it is its robot file's business (`[approach]` in lexjr-sim,
+two servos, the rover by turning and driving, the rover pan tilt by glancing with its head and
+turning its base after. So a behaviour, and a personality's numbers, run unchanged on all four; how a body does it is its robot file's business (`[approach]` in lexjr-sim,
 `[base]` in the daemon's).
 
 - **The SDK** is `gamerobotics/python` (package `gamerobotics`): the client, and `Behaviour`,
@@ -233,8 +235,9 @@ wheel speeds out.
 |---|---|---|---|
 | app ↔ gamerobotd | unix socket (`/tmp/gamerobotd.sock`, `GAMEROBOTD_SOCKET`) | JSON-RPC 2.0, one object per line | intents up to the loop rate |
 | gamerobotd ↔ simulator | TCP `127.0.0.1:7600`, `TCP_NODELAY` | body protocol v2 (joint modes in the hello), one JSON object per line | one read (+ one write when enabled) per tick |
-| face_cam → app | UDP `127.0.0.1:5005` | JSON: face box and 160 landmarks (~3.7 kB) | camera rate, ~30/s |
-| app → simulator viewer | UDP `127.0.0.1:7610` | JSON: gaze target and face mesh | app rate; visualization only |
+| face_cam (or face_replay) → app | UDP `127.0.0.1:5005` | JSON: face box and 160 landmarks (~3.7 kB) | camera rate, ~30/s |
+| app → simulator viewer | UDP `127.0.0.1:7610` | JSON: gaze target, face position and mesh | app rate; visualization only |
+| simulator → recorder | UDP `127.0.0.1:7620` (`--publish`) | JSON: body time, qpos, eye, gaze, the app's face message | every read; recording only |
 
 Why these: a unix socket's file permissions decide who may command the robot, and a wrong
 network interface cannot be bound by mistake. JSON costs nothing at these sizes and can be read
@@ -269,6 +272,8 @@ but never changes its result. The daemon gives it 2 s to answer before reconnect
 | 2026-10-20 | A project file and one command, `gamerobotics play`, that supervises the processes and reports health in plain words (M0) | four terminals and three environments were the first thing a new user would meet; the camera clash and throttling were silent |
 | 2026-10-20 | The user's experiment: a second robot from the same hardware, the Pan Tilt Robot Test (two servos, a new base plate and camera yoke), on the same daemon, solver and behaviours, with only robot files different. Result: it holds. No daemon or solver code changed. What it took: lexjr-sim's robot file gains `[robot]` and `LEXJR_ROBOT` picks it; the Python MotionCore runs with no body joints or `[lean]`; `project.toml` gains `[env]`; the golden tests cover both robots. What is still LexJR-only is in spec.md §10 | test the claim that a robot is a file, before building more robots on it; the pan tilt passes `scripts/trial.py` with SmoothFollow and CatGaze, and LexJR is unchanged (its goldens export byte-identical) |
 | 2026-10-21 | The user's third robot: a two-wheeled rover (two servos in wheel mode and a camera), on the same daemon, solver and behaviours, to harden the API for any body. The user chose: **`robot.approach` in metres** toward what the robot looks at, replacing `robot.lean` (rad of a lean joint); **the base in the gaze chain** (its pose as joints MotionCore moves, a diff drive in the daemon turning that into wheel speeds), not a separate drive intent; **unlimited travel**. Also: joints get a mode (position, velocity); body protocol v2; `[lean]` splits into `[keep_distance]` (the behaviour, robot-neutral gain) and `[approach]` (the body). On a base, approaching means changing the eye's distance to the target along its line of sight, and aims are from the base's measured position: a diff drive cannot step sideways | the behaviours must not know the body; a robot-neutral unit lets one behaviour and one personality run on a neck or on wheels; with the base in the chain, gaze on a rover is the same solve as on LexJR. LexJR's joints move as before (8e-15 rad); the rover passes `scripts/trial.py` (approach within 1 mm, odometry 0.7 mm off after 2.6 m) |
+| 2026-10-22 | The user's experiment: combine the pan tilt and the rover into one robot (a head on a diff-drive base) **without changing the daemon** | if the API and robot file are right, a new body made of known parts needs only files. It did: robot, CAD and test files only, and no change in gamerobotd, gr-control, gr-motion, gr-proto or the behaviours. It passes `scripts/trial.py` except that a target straight behind can hunt between two mirror-image poses (2 of 6 SmoothFollow runs); fixing that is a MotionCore change, left for the user to decide |
+| 2026-10-22 | Test the robots without the camera by **capturing the user's face once and playing it back** (`face_cam --record`, `face_replay.py`), not with synthetic faces (`face_sim.py`, kept on branch `face-sim`); record the simulation with a **separate recorder** fed by the body's published state, rendering **after** the run, with a **fit camera** framed on the bounding box of the interaction; **every video goes in the docs** (media.html, checked); narration is **ElevenLabs only** | a capture carries the real mesh, expressions, head tilt and motion, which the synthetic face did not feel like; rendering during a run starved the sim, so a wall-time face outran the robot; a bounding box makes framing deterministic and reliable; the user wants every result documented, and the stand-in voice was not good enough. The showreel (§9b) plays one capture on all four robots |
 | 2026-10-19 | Mimic head tilt as a third behaviour on the same camera: `robot.tilt`, the solver's horizon task given a roll target, in the tick; mirrored by default | the user asked for it; a roll target keeps the gaze on you while tilting, and mirroring reads as copying on a call |
 
 ## Borrowed code

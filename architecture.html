@@ -238,7 +238,7 @@ flowchart TB
   <section id="map">
     <div class="eyebrow"><span>System map</span></div>
     <h2>Five processes, one owner</h2>
-    <p class="prose">Perception and behaviour live in apps. gamerobotd owns the robot: LexJR, the pan tilt or the two-wheeled rover, each a robot file; on the rover, its diff drive turns the motion into wheel speeds. The box on the right is whatever <code>RobotIo</code> is plugged in: the MuJoCo body today, Feetech servos next. Nothing to its left changes when it does.</p>
+    <p class="prose">Perception and behaviour live in apps. gamerobotd owns the robot: LexJR, the pan tilt, the two-wheeled rover or the rover with the pan tilt on top, each a robot file; on the rover, its diff drive turns the motion into wheel speeds. The box on the right is whatever <code>RobotIo</code> is plugged in: the MuJoCo body today, Feetech servos next. Nothing to its left changes when it does.</p>
     <figure>
       <div class="map">
         <svg viewBox="0 -10 980 340" role="img" aria-label="face_cam sends faces over UDP to face_follow, which sends intents over JSON-RPC to gamerobotd; gamerobotd drives the MuJoCo body through RobotIo; face_follow also sends the face to the viewer; gamerobotctl talks to gamerobotd">
@@ -274,7 +274,9 @@ flowchart TB
           <tr><td><code>gamerobotd</code></td><td>gamerobotics</td><td>the robot: the loop, safety, motion, the hardware link</td></tr>
           <tr><td><code>gamerobotctl</code></td><td>gamerobotics</td><td>nothing; a command line over the API</td></tr>
           <tr><td><code>body_server.py</code></td><td>lexjr-sim</td><td>the robot's simulated body (LexJR, or the robot <code>LEXJR_ROBOT</code> names): MuJoCo, BAM servo models, the viewer</td></tr>
-          <tr><td><code>face_cam.py</code></td><td>lexjr-sim</td><td>the webcam and face perception; pixels never leave it</td></tr>
+          <tr><td><code>face_cam.py</code></td><td>lexjr-sim</td><td>the webcam and face perception; pixels never leave it; <code>--record</code> captures a face</td></tr>
+          <tr><td><code>face_replay.py</code></td><td>lexjr-sim</td><td>the camera's stand-in: a face capture played back with its timing (<code>play --mocap</code>)</td></tr>
+          <tr><td><code>recorder.py</code></td><td>lexjr-sim</td><td>films the simulation from the body's published state, off screen, in body time</td></tr>
           <tr><td><code>face_follow.py</code></td><td>lexjr-sim</td><td>a behaviour Runner: smooth follow or cat gaze, keep distance, mimic tilt</td></tr>
         </tbody>
       </table>
@@ -572,6 +574,8 @@ config = <span class="s">"lexjr.motion.json"</span></pre>
       <div><time>2026-10-19</time><p><b>Behaviours as plugins:</b> a Python SDK and a Runner with one owner per slot and live, gliding switches. Cat gaze is the second gaze behaviour.</p></div>
       <div><time>2026-10-20</time><p><b>A second robot, files only.</b> The Pan Tilt Robot Test (two of LexJR's servos, a new base plate and camera yoke) runs on the same daemon, solver and behaviours. No daemon or solver code changed; lexjr-sim's robot file gained <code>[robot]</code>, and projects gained <code>[env]</code>.</p></div>
       <div><time>2026-10-21</time><p><b>A third robot, a rover, and a body-neutral API.</b> Two servos in wheel mode and a camera, on the same daemon and behaviours. The user chose <code>robot.approach</code> in metres (replacing <code>robot.lean</code>), the base's pose in the gaze chain with a diff drive in the daemon, and unlimited travel. Joints gained modes; the body protocol is v2.</p></div>
+      <div><time>2026-10-22</time><p><b>One face, four robots.</b> The user's face, captured once from the webcam, plays back on every robot without the camera; a separate recorder films the runs after the fact, framed on the bounding box of the interaction. The showreel (<a href="media.html#recordings">media</a>) plays one capture on all four robots, narrated with ElevenLabs.</p></div>
+      <div><time>2026-10-22</time><p><b>Two robots in one, no daemon change.</b> The rover with the pan tilt on top (a head that glances, a base that turns after it and drives to keep its distance) runs from robot, CAD and test files alone. A target straight behind can hunt between two mirror-image poses; fixing that would be a MotionCore change.</p></div>
       <div><time>2026-10-19</time><p><b>Mimic head tilt,</b> a third behaviour on the same camera: the solver's horizon task takes a roll target, so the head tilts while its gaze stays on you. Mirrored, as on a call.</p></div>
     </div>
   </section>
@@ -590,6 +594,7 @@ config = <span class="s">"lexjr.motion.json"</span></pre>
           <tr><td>Saccades; behaviour SDK and Runner; cat gaze</td><td><span class="status st-ship">shipped</span></td></tr>
           <tr><td>A second robot (Pan Tilt Robot Test) on the same daemon and behaviours</td><td><span class="status st-ship">shipped</span></td></tr>
           <tr><td>A mobile robot (Rover Robot Test): wheels, a diff drive, <code>robot.approach</code></td><td><span class="status st-ship">shipped</span></td></tr>
+          <tr><td>Two robots combined (Rover Pan Tilt Test), no daemon change</td><td><span class="status st-ship">shipped</span></td></tr>
           <tr><td>Behaviour scaffold, replay testing, percept service</td><td><span class="status st-plan">planned</span></td></tr>
           <tr><td>FeetechIo: real servos over rustypot</td><td><span class="status st-plan">planned</span></td></tr>
           <tr><td>ONNX policy runner; load microduck policies</td><td><span class="status st-plan">planned</span></td></tr>

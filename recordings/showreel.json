@@ -1,0 +1,93 @@
+{
+  "_about": "The cross-embodiment showreel: one face capture played to every robot. scripts/showreel.py records each robot (record), voices the steps' text (voice: ElevenLabs if ELEVENLABS_API_KEY is set, else macOS say), and builds docs/recordings/<out> (build). Each step's words must stay true to the code: what a robot's files turn on is what it is said to do. A step's explain is an explainer from docs/animations shown with it: behind a card (full) or as an inset; a still is a frame of a clip, cropped (x, y, w, h at 1280 x 720).",
+  "title": "One face, four robots",
+  "out": "one-face-four-robots.mp4",
+  "tag": "One face capture · the same gamerobotd and behaviours · simulated in MuJoCo",
+  "steps": [
+    {
+      "id": "intro",
+      "kind": "card",
+      "title": "One face, four robots",
+      "caption": "Easier to build, faster to iterate on: one face, four robots, the same software",
+      "text": "We're making advanced robotics easier to build and faster to iterate on. Here's how: one recorded face, four different robots, and the same software driving them all. Only the robot's description changes. And it's built to drive the real robot the same way: swap the simulator for real servos, and nothing above it changes.",
+      "explain": {
+        "clip": "animations/AppTick.mp4",
+        "full": true,
+        "label": "Under the hood: the app takes in what the camera sees and sends intents, 50 times a second"
+      }
+    },
+    {
+      "id": "lexjr",
+      "kind": "robot",
+      "robot": "lexjr",
+      "title": "LexJR · six joints",
+      "caption": "Head glances, neck and torso follow · leans back to keep its distance · mirrors your head tilt",
+      "text": "First, LexJR, a desk robot with six joints. The head makes the quick glance, and the neck and torso turn after it. When the face comes closer, LexJR leans back to keep its distance, by a few centimetres. And it's the only one of the four with a head roll joint, so it mirrors the tilt of your head.",
+      "explain": {
+        "clip": "animations/StaggeredGaze.mp4",
+        "label": "Under the hood: the eyes lead, the body follows"
+      }
+    },
+    {
+      "id": "pantilt",
+      "kind": "robot",
+      "robot": "pantilt",
+      "title": "Pan tilt · two joints",
+      "caption": "The same gaze, on pan and tilt alone · no lean or roll, so those behaviours are not started",
+      "text": "Next, a pan tilt, built from two of LexJR's servos and its camera. The same gaze behaviour follows the face with just pan and tilt. Its files give it no way to lean or roll, so the app doesn't start keep distance or mimic tilt for it. Nothing else changes.",
+      "explain": {
+        "clip": "animations/AppTick.mp4",
+        "label": "Under the hood: the app's slots: gaze, approach, tilt. The pan tilt fills only gaze"
+      }
+    },
+    {
+      "id": "rover",
+      "kind": "robot",
+      "robot": "rover",
+      "title": "Rover · two wheels",
+      "caption": "Looking means turning the whole robot · keeping its distance means driving",
+      "text": "Now a rover: two of the same servos, switched to wheel mode. Here, looking at you means turning the whole robot, and keeping its distance means driving. The behaviour asks for exactly what it asked of LexJR: approach by so many metres. The daemon's differential drive turns that into wheel speeds.",
+      "explain": {
+        "still": "animations/ArchitectureTour.mp4",
+        "crop": [
+          40,
+          150,
+          700,
+          400
+        ],
+        "label": "Under the hood: gamerobotd's diff drive turns the motion into wheel speeds"
+      }
+    },
+    {
+      "id": "roverpt",
+      "kind": "robot",
+      "robot": "roverpt",
+      "title": "Rover pan tilt · wheels and a head",
+      "caption": "The head glances, the base turns after it and drives · new robot files, no daemon changes",
+      "text": "Put the pan tilt on the rover, and you get both. The head glances first, and the base turns after it, the way LexJR's torso follows its neck. It drives to keep its distance. This robot took new robot files, and no changes to the daemon at all.",
+      "explain": {
+        "clip": "animations/StaggeredGaze.mp4",
+        "label": "Under the hood: the same staggered gaze, with the base as the body"
+      }
+    },
+    {
+      "id": "grid",
+      "kind": "grid",
+      "title": "Same face, same moment",
+      "caption": "One behaviour, four bodies",
+      "text": "Here they are side by side, at the same moment of the same recording. One set of behaviours, four different bodies."
+    },
+    {
+      "id": "outro",
+      "kind": "card",
+      "title": "From idea to atom",
+      "caption": "gameRobotics: advanced robotics, approachable, affordable and fun to iterate on",
+      "text": "gameRobotics makes advanced robotics approachable, affordable, and fun to iterate on. Dream up a character, try it in simulation, give it a body, and watch it come to life. From idea to atom.",
+      "explain": {
+        "clip": "animations/Pipeline.mp4",
+        "full": true,
+        "label": "Same daemon, same app, same tick: only the robot's files and its I/O change"
+      }
+    }
+  ]
+}

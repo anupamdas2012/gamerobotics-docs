@@ -21,6 +21,7 @@ either is missing. The first `play` asks for camera access for your terminal.
 | see LexJR follow my face | `bin/gamerobotics play lexjr` |
 | run the Pan Tilt Robot Test instead | `bin/gamerobotics play pantilt` |
 | run the Rover Robot Test (it turns and drives) | `bin/gamerobotics play rover` |
+| run the rover with the pan tilt on top | `bin/gamerobotics play roverpt` |
 | try another personality | `bin/gamerobotics play lexjr --personality shy-puppy` |
 | run without a window or the camera | `bin/gamerobotics play lexjr --headless --no-camera` |
 | check everything is ready, without starting | `bin/gamerobotics doctor lexjr` |
@@ -44,6 +45,9 @@ bin/gamerobotics play lexjr --personality attentive-owl
 bin/gamerobotics play lexjr --headless --no-camera --seconds 20
 bin/gamerobotics play pantilt                    # the 2-DOF pan tilt, same daemon and app
 bin/gamerobotics play rover                      # the two-wheeled rover: it turns to look and drives to keep its distance
+bin/gamerobotics play roverpt                    # the rover with the pan tilt on top: the head glances, the base turns after it
+bin/gamerobotics play lexjr --mocap-record mocap/me.jsonl   # live, and capture your face as it runs
+bin/gamerobotics play roverpt --mocap mocap/me.jsonl        # your captured face played back: no camera
 ```
 
 | flag | what it does |
@@ -51,6 +55,8 @@ bin/gamerobotics play rover                      # the two-wheeled rover: it tur
 | `--personality NAME` | a personality from the project (`curious-cat`, `shy-puppy`, `attentive-owl`) or a path to a file; default: the project's |
 | `--headless` | no sim window (the sim still runs) |
 | `--no-camera` | run without the webcam; the robot looks straight ahead |
+| `--mocap-record FILE` | capture your face from the webcam to this `.jsonl` as it runs (`face_cam.py --record`); keep captures in `mocap/`, which git ignores |
+| `--mocap FILE` | play a face capture back instead of the webcam, looping (`face_replay.py`); no camera check |
 | `--seconds N` | stop after N seconds |
 | `--verbose` | show every process's output as it happens, and a status line every 5 s |
 
@@ -181,14 +187,40 @@ live demo.
 ../lexjr-sim/.venv-bam/bin/python scripts/trial.py pantilt
 ../lexjr-sim/.venv-bam/bin/python scripts/trial.py lexjr --gaze smooth --hold 5
 ../lexjr-sim/.venv-bam/bin/python scripts/trial.py rover --hold 4
+../lexjr-sim/.venv-bam/bin/python scripts/trial.py roverpt --hold 5 --frames /tmp/roverpt-frames
 ```
 
 | flag | what it does |
 |---|---|
-| `lexjr\|pantilt\|rover` | the robot |
+| `lexjr\|pantilt\|rover\|roverpt` | the robot |
 | `--gaze smooth\|cat\|both` | which gaze behaviours to run (default both) |
 | `--hold S` | seconds each synthetic face holds still (default 3; LexJR settles in about 5) |
 | `--json FILE` | also write the results here |
+| `--frames FILE` | write each tick's timing to `FILE.<gaze>`, one JSON line per tick: seconds since the first frame, tick, tick time (s), missed ticks so far; for finding where ticks were missed |
+
+### scripts/showreel.py
+
+The cross-embodiment showreel: one face capture played to every robot, filmed, captioned and
+narrated (`docs/recordings/one-face-four-robots.mp4`). The steps and their words are
+`docs/recordings/showreel.json`.
+
+```sh
+.venv-docs/bin/python scripts/showreel.py record    # each robot follows the capture once; states saved, then filmed
+.venv-docs/bin/python scripts/showreel.py voice     # ElevenLabs only: run it yourself with ELEVENLABS_API_KEY set
+.venv-docs/bin/python scripts/showreel.py build     # the video, its poster, and its entry on media.html
+.venv-docs/bin/python scripts/showreel.py build --silent   # a picture preview, .showreel/preview.mp4
+```
+
+| argument | what it does |
+|---|---|
+| `record\|render\|voice\|build\|all` | the step; `render` films the saved runs again (a framing change) |
+| `--capture FILE` | the face capture (default `mocap/me.jsonl`) |
+| `--robots A,B` | for record and render (default `lexjr,pantilt,rover,roverpt`) |
+| `--force` | for voice: re-voice every line, not just the changed ones |
+| `--silent` | for build: no narration, each step timed from its words |
+
+It runs each robot on its own ports (body 7698, faces 5098, viz 7611, recorder 7621) and socket,
+and warns when a run fell behind real time.
 
 ### scripts/stress.py
 
@@ -208,8 +240,8 @@ runs from the `lexjr-sim` directory with its own environment.
 
 **Which robot:** each runs LexJR unless `LEXJR_ROBOT` names another robot file, relative to
 lexjr-sim, for example `LEXJR_ROBOT=pantilt/robot.toml .venv-bam/bin/python body_server.py`
-(`rover/robot.toml` for the rover). A project sets it in its `[env]`. `lookat.py` refuses the
-rover: it drives servos to angles, and a wheeled robot needs gamerobotd's diff drive.
+(`rover/robot.toml` for the rover, `roverpt/robot.toml` for the rover pan tilt). A project sets it in its `[env]`. `lookat.py` refuses the
+rovers: it drives servos to angles, and a wheeled robot needs gamerobotd's diff drive.
 
 ### body_server.py
 
@@ -226,6 +258,7 @@ The simulated body: MuJoCo, LexJR's servo models, and the viewer.
 | `--host`, `--port` | where gamerobotd connects (default `127.0.0.1:7600`) |
 | `--viz-port` | UDP port for the face and gaze line to draw (default 7610) |
 | `--truth-log PATH` | write the true base pose after every read (JSON lines `{"t", "pose": [x, y, heading]}`), to check a wheeled robot's odometry against; never sent to the daemon |
+| `--publish HOST:PORT` | send the body's state after every read (UDP JSON: body time, qpos, the eye and its gaze, the app's last face message), for `recorder.py`; never sent to the daemon |
 
 **In the viewer:** `]` gives the side view, and `Esc` returns to the front view.
 
@@ -250,7 +283,56 @@ The webcam and face perception.
 | `--min-confidence X` | for `--detector box` |
 | `--no-preview` | no preview window |
 | `--check SECONDS` | test the camera and exit; prints opened, frames, failed reads, faces, fps |
+| `--record FILE` | capture the session to this `.jsonl` for `face_replay.py`: every message as sent, with its time, plus the 52 expression blendshapes and the head pose (kept in the file, not sent); the preview shows a red REC |
 | `--stats-every S` | how often to print a stats line for `play` (default 5) |
+
+### face_replay.py
+
+Plays a face capture (`face_cam.py --record`) back to the app with its original timing, so the
+robot follows your face without the camera. Standard library only. `play --mocap` runs it.
+
+```sh
+.venv-cam/bin/python face_replay.py mocap/me.jsonl --loop
+.venv-cam/bin/python face_replay.py mocap/me.jsonl --info          # recorded when, how long, faces, expressions
+.venv-cam/bin/python face_replay.py mocap/me.jsonl --start 10 --seconds 15 --speed 0.5
+```
+
+| flag | what it does |
+|---|---|
+| `FILE` | the capture |
+| `--loop` | start again at the end (default: once) |
+| `--speed X` | play it X times as fast |
+| `--start S` | start S seconds in |
+| `--seconds N` | stop after N seconds |
+| `--port N` | where faces are sent (UDP, default 5005) |
+| `--info` | describe the capture as JSON and exit |
+| `--stats-every S` | how often to print a stats line for `play` (default 5) |
+
+### recorder.py
+
+Films the 3D scene, the face and the line of sight from `body_server.py --publish`, with
+MuJoCo's off-screen renderer and ffmpeg (H.264). Frames follow body time, so the video plays at
+the robot's speed; each run reports how close to real time the body ran.
+
+```sh
+.venv-bam/bin/python recorder.py --out run.mp4                          # render as it runs
+.venv-bam/bin/python recorder.py --save-states run.jsonl                # or save, so the sim has the CPU...
+.venv-bam/bin/python recorder.py --states run.jsonl --out run.mp4 --camera fit   # ...and render after
+```
+
+| flag | what it does |
+|---|---|
+| `--out FILE` | the video |
+| `--listen HOST:PORT` | where the body publishes (default `127.0.0.1:7620`) |
+| `--save-states FILE` | don't render: save the states, to render later |
+| `--states FILE` | render saved states |
+| `--camera NAME` | `behind` (over the shoulder, the default), `fixed`, `fit` (saved states only: framed on the bounding box of the whole interaction), `front`, `side`, `orbit`, `view` |
+| `--fit-area X0,Y0,X1,Y1` | with `fit`: the part of the frame to keep it all in, leaving room for captions |
+| `--fit-window S` | with `fit`: follow the action over S s either side (default: one still shot) |
+| `--fit-azimuth`, `--fit-elevation`, `--fit-margin` | with `fit`: the angle round from behind (55°), down (−25°), and the spare edge (0.04) |
+| `--from-face` | start at the first face, so recordings of one capture line up |
+| `--size WxH`, `--fps`, `--crf` | 1280x720, 30, 18 |
+| `--seconds N`, `--ease S`, `--orbit-s S`, `--distance M` | stop after N s of body time; how gently a moving camera follows; one orbit's time; a set camera distance |
 
 ### face_follow.py
 

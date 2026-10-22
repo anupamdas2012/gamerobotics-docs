@@ -3,7 +3,7 @@
 The engine as built, exactly. What we're building on it, and for whom, is the product spec,
 [product-spec.md](product-spec.md).
 
-Status: current as of 2026-10-21 (gamerobotics `74cdace`, lexjr-sim `db5ca29`).
+Status: current as of 2026-10-22 (gamerobotics `5c506b7`, lexjr-sim `4b57cbf`).
 What exists today and exactly how it behaves. How it is put together is in
 [architecture.md](architecture.md). Kept current by the `update-docs` skill.
 
@@ -14,6 +14,10 @@ Status keys: **shipped** (built, tested, committed), **partial**, **planned**.
 ```sh
 bin/gamerobotics play lexjr [--personality shy-puppy] [--headless] [--no-camera] [--seconds N] [--verbose]
 bin/gamerobotics play pantilt                 # the Pan Tilt Robot Test (§1a)
+bin/gamerobotics play rover                   # the Rover Robot Test (§1b)
+bin/gamerobotics play roverpt                 # the rover with the pan tilt on top (§1c)
+bin/gamerobotics play lexjr --mocap-record mocap/me.jsonl   # capture your face as it runs (§8b)
+bin/gamerobotics play roverpt --mocap mocap/me.jsonl        # play it back, no camera (§8b)
 bin/gamerobotics setup lexjr [--rebuild] [--upgrade]
 bin/gamerobotics doctor lexjr [--no-camera]
 bin/gamerobotics projects
@@ -31,17 +35,20 @@ launcher in `.venv`).
   `ready` line it prints (`@daemon` for the daemon), and `optional`;
 - `[setup]`: the Python environments, their packages (pip specs, `path:` or `editable:` dirs
   relative to `workdir`) and the files to download;
+- a camera process's `replay` (the command `--mocap FILE` runs in its place, with the file and
+  `--loop`; named "mocap", so the camera's health checks are off) and `capture` (added to its
+  command by `--mocap-record FILE`, `{file}` filled in);
 - `[env]`: environment variables set for every process the project starts (the daemon, its
   `[[process]]` entries and the camera check), on top of the launcher's own. The pan tilt's
   sets `LEXJR_ROBOT = "pantilt/robot.toml"`, which picks lexjr-sim's robot file (§1a).
 
-Projects: `lexjr` and `pantilt`. Each still points at two robot descriptions, the daemon's
+Projects: `lexjr`, `pantilt`, `rover` and `roverpt`. Each still points at two robot descriptions, the daemon's
 `robots/<name>.toml` and lexjr-sim's robot file. M1's assembly compiler will generate both.
 
 **`play`:**
 1. **Pre-start checks:** gamerobotd built; each process's environment present; no other
-   gamerobotd answering; port 7600 free; the CPU's throttle; and, unless `--no-camera`, a 2 s
-   camera check (`face_cam.py --check`). An error stops it with the fix; a warning does not.
+   gamerobotd answering; port 7600 free; the CPU's throttle; and, unless `--no-camera` or
+   `--mocap`, a 2 s camera check (`face_cam.py --check`). `--mocap` checks the file is a capture. An error stops it with the fix; a warning does not.
 2. **Starts each process in order,** waiting until it is ready: its `ready` line, or for the
    daemon, `robot.state` reading the robot (`read_errors` 0, positions present). Each has 90 s; a
    process that stops or times out ends the start, with the last lines of its log.
@@ -148,6 +155,9 @@ Pan tilt (`robots/pantilt.toml`): pan ±87°, tilt −87° (up) to +37° (down);
 Rover (`robots/rover.toml`): two wheels, 550°/s and 2,200°/s² (550°/s is what lexjr-sim assumes
 for the HD-1910, not measured); at 30 mm that is 0.29 m/s ahead or 8.9 rad/s turning on the spot.
 
+Rover pan tilt (`robots/roverpt.toml`): the rover's two wheels and `[base]`, then pan ±87° and tilt
+−87° to +37°, 550°/s; its gaze chain is `base_x`, `base_y`, `base_yaw`, `pan`, `tilt`.
+
 ## 1a. More than one robot: the Pan Tilt Robot Test (shipped)
 
 A second robot runs on the same gamerobotd binary, MotionCore and face-follow behaviours
@@ -240,6 +250,46 @@ below. Targets behind it turn it right round (heading 3.14 rad). The pan tilt pa
 trial, and so does LexJR (2026-10-21, CPU not throttled, 5 s holds): 0 missed ticks, tick p99
 4.8 / 4.7 ms, gaze error on a held face ≤ 0.62° / 0.78° (smooth / cat). With the CPU throttled to
 41% the same LexJR run missed 14 ticks (p99 15 ms): the throttle, not the code.
+
+## 1c. Two robots in one: the Rover Pan Tilt Test (shipped)
+
+A fourth robot, built on 2026-10-22 to test whether two robots' parts combine with **no daemon
+change**: the rover's chassis and wheels with the pan tilt's head on top. None was needed. No code
+in gamerobotd, gr-control, gr-motion, gr-proto or the behaviours changed; the only edit under
+`crates/` is roverpt's entry in the golden test list.
+
+**The robot** (Onshape LexJR-PT, branch `rover-pantilt-test`, assembly "Rover Pan Tilt Test"):
+- RoverPT-Chassis (new): the rover's deck, spine, wheel wells and skids; the pan servo's case
+  sits on its lid (z 47 mm);
+- the rover's two HD-1910-Single in wheel mode and two RoverPT-Wheels (new; the rover's);
+- the pan tilt's HD-1910-Single (pan), SwivelBracket and HD-1910 (tilt), its pan axis straight up
+  through the middle of the axle (the pan tilt's own frame at (−59.75, 2.3, 70.89) mm in the
+  rover's), and RoverPT-CameraYoke (new) carrying LexJR's eye and lens.
+
+The new parts are FeatureScript (lexjr-sim `roverpt/cad/roverpt_parts.fs`). The mates solve with
+no drift; tilt stops at −90° / +40° and pan at ±90° in the CAD. The head's clearance is the pan
+tilt's: first contact at +45–49° of tilt (lexjr-sim `tools/clearance.py`, which now takes the pan and
+  tilt joints' names, `--pan` and `--tilt`).
+
+**Its files:** `robots/roverpt.toml`, `.chain.json`, `.motion.json`; `projects/roverpt/project.toml`
+(`gamerobotics play roverpt`); lexjr-sim `roverpt/robot.toml`, `robot.xml`, `scene.xml`; golden
+data in `crates/gr-motion/tests/golden/roverpt/`. In lexjr-sim's robot file, `base_yaw` is the
+body joint (a 0.9 Hz spring) and pan and tilt are the head (5 Hz): the head glances, and the base
+turns after it, as LexJR's neck leads its torso. `[approach] base = true` and `[keep_distance]
+gain = 1.0` are the rover's.
+
+**Measured** with `scripts/trial.py roverpt --hold 5` on 2026-10-22 (Intel MacBook, release; the
+CPU throttled at times, down to 31%):
+
+| gaze | limits | fastest target | missed ticks | tick p99 | gaze wobble, held face | gaze error, held face | approach, worst miss | odometry vs true pose |
+|---|---|---|---|---|---|---|---|---|
+| smooth | within (pan −84.4 / +85.3°, tilt −87.0 / +37.1°) | 550°/s; wheels 550°/s, 2,200°/s² | 0 | 4.6 ms | ≤ 0.58° | ≤ 0.42° | 0 mm (0.294 m in, 0.071 m back) | 0.46 mm, 0.008° after 2.4 m |
+| cat | within | the same | 9 | 4.7 ms | ≤ 1.26° | ≤ 0.83° | 0 mm | 0.40 mm, 0.013° after 1.9 m |
+
+Across the day's runs, missed ticks ranged from 0 to 11 on this robot, and from 0 to 11 on the
+plain rover in the same hour; each was a stall in the simulator's reply (20–50 ms),
+while the daemon's own tick stays under 0.25 ms. A target straight behind does not always settle:
+see §10.
 
 ## 2. gamerobotd (shipped)
 
@@ -390,6 +440,9 @@ within 0.1 s of body time stops**, and so does every wheel on torque off.
   unwraps it.
 - `--truth-log PATH` writes the true base pose after every read (JSON lines, off the protocol),
   for checking odometry.
+- `--publish HOST:PORT` sends the body's state after every read, off the protocol (UDP JSON:
+  `t` body time, `qpos`, `eye`, `gaze`, and `viz`, the app's last visualization message), for
+  the recorder (§9b).
 
 ## 8. Face follow (shipped)
 
@@ -439,6 +492,25 @@ cd lexjr-sim && .venv-bam/bin/mjpython body_server.py
 .venv-bam/bin/python face_follow.py
 ```
 
+## 8b. Face capture and playback (shipped)
+
+Record your face once with the webcam; after that, any robot can follow it without the camera,
+exactly as it followed you live.
+
+- **Capture:** `face_cam.py --record FILE` (or `play --mocap-record FILE`) writes a header
+  (`{"mocap": 1, detector, hfov_deg, width, height, mesh_idx, recorded}`), then every message as
+  it was sent, with its time: the box, the 160 landmarks, and the `c` and `m` key presses. With
+  the landmarker it also records MediaPipe's 52 expression blendshapes (`bs`) and the head pose
+  (`pose`, a 4 x 4 matrix), which stay in the file: nothing uses them yet.
+- **Playback:** `face_replay.py FILE` (or `play --mocap FILE`, looping) sends each message again
+  to UDP 5005 with its original timing and the time it is sent, without `bs` and `pose`. The app,
+  the daemon and the viewer can't tell it from the camera: the viewer draws the face mesh, and
+  LexJR mirrors the head tilt.
+- **Captures are a person's face.** They go in `mocap/`, which git ignores; the `face-mocap`
+  skill (`.claude/skills/face-mocap/`) records and plays them back.
+- First capture, 2026-10-22: 42.3 s, 817 frames, a face in every one, head tilt −9.2° to +6.3°,
+  distance 0.24–0.51 m; played back on the rover pan tilt and on all four robots (§9b).
+
 ## 8a. Behaviours and the app SDK (shipped)
 
 **The Python SDK** (`gamerobotics/python`, package `gamerobotics`, no dependencies, Python 3.10+):
@@ -481,16 +553,44 @@ Tests: `cd gamerobotics/python && python3 -m unittest discover -s tests` (the ru
 Tried live with the webcam (2026-10-19): CatGaze found the face in 0.26 s, then cycled through
 track, dart and stare (164 state changes in 6.8 minutes), with the lean (now the approach) and tilt alongside.
 
+## 9b. Recording the simulation (shipped)
+
+**`recorder.py`** (lexjr-sim) films the 3D scene from `body_server.py --publish`: it builds the
+same model (`sim_bam.build`, for the robot `LEXJR_ROBOT` names), renders it with MuJoCo's
+off-screen renderer, draws the face and the line of sight over it as the viewer does
+(`lexjr_ctl/overlay.py`, shared with the viewer), and pipes the frames to ffmpeg (H.264,
+yuv420p). It is a separate process, reached by an address.
+- **Body time:** frames follow the body's clock, so a video plays at the robot's own speed; a
+  late state repeats the last frame. Each run reports the body's pace against the wall clock.
+- **Two passes:** `--save-states` saves the states (no rendering, so the sim keeps the CPU) and
+  `--states` renders them after. Rendering 1280 x 720 takes about 11 ms a frame (Intel MacBook);
+  done during a run, on a throttled laptop, it let the sim fall to about 70% of real time, and a
+  face played in wall time then outran the robot. Saved and rendered after, all four robots ran
+  at 100%.
+- **Cameras:** `behind` (over the shoulder), `fixed`, `front`, `side`, `orbit`, `view`, and
+  `fit`: from saved states, the camera is framed on the bounding box of the whole interaction
+  (every robot geom with its bounding radius, the face, its mesh and the end of the line of
+  sight) inside `--fit-area` of the frame, from a set angle; one still shot, or following over
+  `--fit-window` s smoothed both ways in time. The same states give the same video.
+- **`play --record`** (branch `face-sim`) runs it alongside a project.
+
+**`scripts/showreel.py`** makes `docs/recordings/one-face-four-robots.mp4` (2:07, 2026-10-22):
+the first face capture (§8b) played to LexJR, the pan tilt, the rover and the rover pan tilt,
+each filmed with the fit camera, captioned, with an explainer inset, a grid of all four at the
+same moment, and narration from `docs/recordings/showreel.json`, voiced with ElevenLabs (never
+a stand-in voice). Every video under `docs/` is on `media.html`; the simulation recordings are
+listed in `docs/recordings/recordings.json`.
+
 ## 9. Verification (shipped)
 
 | suite | what | where |
 |---|---|---|
 | unit | model parsing, Safety (incl. a wheel's speed and acceleration, a non-finite wheel target stopping it), Controller rules, the diff drive (odometry, command), body protocol client (modes in the hello), API envelopes | `cargo test` |
-| golden | for each robot (LexJR, pan tilt, rover): FK + Jacobian on 500 poses (tolerance 1e-12), aim on 300 cases including roll targets (1e-9 rad), MotionCore replays over 4,850 ticks including tilt, the approach and 48 saccades (some fired mid-move) on perfect servos and BAM physics (1e-9 rad), on both kinematics backends; the approach's reach matches Python; the rover backs off along its line of sight | `crates/gr-motion/tests/golden.rs` |
+| golden | for each robot (LexJR, pan tilt, rover, rover pan tilt): FK + Jacobian on 500 poses (tolerance 1e-12), aim on 300 cases including roll targets (1e-9 rad), MotionCore replays over 4,850 ticks including tilt, the approach and 48 saccades (some fired mid-move) on perfect servos and BAM physics (1e-9 rad), on both kinematics backends; the approach's reach matches Python; the rover backs off along its line of sight | `crates/gr-motion/tests/golden.rs` |
 | control path | the golden replay through Controller + Safety + FakeIo; limits no tighter than the motion's; mode switches without jumps; tilt and approach kept across the mode switch, gaze held while tilted | `crates/gr-control/tests/gaze.rs` |
 | mobile robot | the rover through Controller + Safety + the diff drive + MotionCore on a FakeIo whose wheels turn: wheels still on enable, turning to look within the wheels' speed and acceleration, backing off 20 cm, stopping when told to hold | `crates/gr-control/tests/rover.rs` |
-| Python | ServoMap (incl. unwrapping a wheel), aim, MotionCore (incl. tilt, saccades, the approach) on NullBus and SimBus, face geometry and tilt, Proxemics, Mimic, the behaviours; each robot file describes itself; the pan tilt's MotionCore aims within its limits; the rover's wheel signs match its model, it turns to look, backs off and rolls as far as its wheels turned | `lexjr-sim/tests` |
-| end to end | a robot's body, daemon and app with synthetic faces (UDP 5098, body port 7698), then targets past its limits: positions within the limits (0.5° slack), target speed per tick within `max_speed_dps` (a wheel's target within its speed and acceleration), gaze wobble under 1.5° on a held face, no missed ticks; on a wheeled robot, the approach within 2 cm of what keeping the distance asks and odometry within 1 cm and 1° of the body's true pose | `scripts/trial.py` |
+| Python | face_replay: a capture's header and info, a file that isn't one, and a capture played over UDP into `FaceTarget` gives the recorded points, the key press and its timing; ServoMap (incl. unwrapping a wheel), aim, MotionCore (incl. tilt, saccades, the approach) on NullBus and SimBus, face geometry and tilt, Proxemics, Mimic, the behaviours; each robot file describes itself; the pan tilt's MotionCore aims within its limits; the rover's wheel signs match its model, it turns to look, backs off and rolls as far as its wheels turned | `lexjr-sim/tests` |
+| end to end | a robot's body, daemon and app with synthetic faces (UDP 5098, body port 7698), then targets past its limits: positions within the limits (0.5° slack), target speed per tick within `max_speed_dps` (a wheel's target within its speed and acceleration), gaze wobble under 1.5° on a held face, no missed ticks; on a wheeled robot, the approach within 2 cm of what keeping the distance asks and odometry within 1 cm and 1° of the body's true pose, once the base has come to rest | `scripts/trial.py` |
 | stress | the API, loop and simulator link under load: floods, subscription spam, stalled and many clients, long lines, fuzzing, a disabled robot, CPU load, simulator faults | `scripts/stress.py` |
 | SDK | the behaviour Runner: slots, switching, handover | `python/tests` |
 
@@ -513,6 +613,11 @@ To regenerate and re-check: `scripts/golden.sh`.
   to 20% within minutes. Measured 2026-10-19: ticks rise from about 4 ms to 10–50 ms, and 6–22%
   of ticks are missed, so saccades and darts look slow. Moving the simulator to another machine
   is the real fix; `face_cam --no-preview` helps a little.
+- **A capture plays in wall time.** If the sim falls behind real time, the face moves faster
+  than the robot could follow it; `recorder.py` reports the pace, and `showreel.py` warns below
+  95%.
+- **Captures keep 160 of MediaPipe's 478 landmarks**, plus the blendshapes and head pose, which
+  no behaviour uses yet.
 - **The webcam is exclusive in practice.** With OBS running, `face_cam` got only occasional
   frames (126 failed reads in 143 s) and never a face. Quit other camera apps first. A camera
   check: 150 of 150 frames read, a face in all of them, once OBS was closed.
@@ -542,6 +647,16 @@ To regenerate and re-check: `scripts/golden.sh`.
   - A robot is still described in two files: the daemon's `robots/<name>.toml` and lexjr-sim's
     robot file. M1's assembly compiler is meant to merge them.
   - lexjr-sim's robot constants are one robot per process (`LEXJR_ROBOT`).
+- **The rover pan tilt's limits** (2026-10-22):
+  - **A target straight behind can hunt.** Heading and pan both turn the gaze, and for a target at
+    180° there are two mirror-image rest poses (heading about ±100°, pan near its far end). The
+    posture pull costs them the same, so the slow base and the fast head can swing between them: in
+    one trace the heading went to +130°, overshooting the target by 16°, then wound back to −106°.
+    SmoothFollow failed to settle within 6 s in 2 of 6 trials (wobble 11–12°); CatGaze and the plain
+    rover (one joint, one answer) always settled. Fixing it is a MotionCore change (keep to the side
+    it is already turning to), not a robot-file one. A face behind the camera cannot be seen, so only
+    `robot.look_at` can ask for this.
+  - Missed ticks come and go with the CPU throttle, as on the other robots (§10, a throttled laptop).
 
 ## 11. Planned
 
