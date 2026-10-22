@@ -1,0 +1,57 @@
+{
+ "intro": {
+  "key": "faa32a32d80c",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 10.635
+ },
+ "split": {
+  "key": "127d2d448493",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 19.319
+ },
+ "pipeline": {
+  "key": "f7011ad7f171",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 21.502
+ },
+ "slots": {
+  "key": "c100d3fd75bd",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 28.979
+ },
+ "cat": {
+  "key": "7c44eff50d41",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 23.22
+ },
+ "switch": {
+  "key": "b2fed9ad7e0e",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 22.338
+ },
+ "personality": {
+  "key": "407a962d9853",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 15.093
+ },
+ "new": {
+  "key": "9bd574aaacef",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 23.174
+ },
+ "app": {
+  "key": "fffbaf1b6bd2",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 21.409
+ },
+ "safe": {
+  "key": "98ad828cc53e",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 20.108
+ },
+ "next": {
+  "key": "3ab29b97840f",
+  "engine": "elevenlabs:nPczCjzI2devNBz1zQrb",
+  "seconds": 15.232
+ }
+}

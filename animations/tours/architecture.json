@@ -1,5 +1,6 @@
 {
-  "about": "Narration for the ArchitectureTour scene in scenes.py, one entry per step. scripts/voiceover.py turns each into docs/animations/voice/<id>.mp3; the scene waits for each clip. Change the words here, then run scripts/voiceover.py and docs/build.sh ArchitectureTour. 'covers' lists the overview diagram's blocks (architecture.md) the video shows, and 'planned' the dashed ones; scripts/check-docs.py fails when the diagram and these disagree.",
+  "about": "Narration for the ArchitectureTour scene in scenes.py, one entry per step. scripts/voiceover.py turns each into voice/architecture/<id>.mp3; the scene waits for each clip. 'covers' lists the overview diagram's blocks (architecture.md) the video shows, and 'planned' the dashed ones; scripts/check-docs.py fails when the diagram and these disagree.",
+  "scene": "ArchitectureTour",
   "covers": [
     "CTL",
     "GRC",
@@ -12,6 +13,7 @@
     "API",
     "WS",
     "LOOP",
+    "DRIVE",
     "PUB",
     "IO",
     "BODY",
@@ -32,7 +34,7 @@
     },
     {
       "id": "loop",
-      "text": "At the centre is gamerobotd, the daemon, written in Rust. Its control loop ticks fifty times a second. Each tick, the controller and MotionCore turn what the robot wants into smooth joint targets, and Safety is the only thing allowed to write to the motors."
+      "text": "At the centre is gamerobotd, the daemon, written in Rust. Its control loop ticks fifty times a second. Each tick, the controller and MotionCore turn what the robot wants into smooth joint targets, and Safety is the only thing allowed to write to the motors. On a robot with wheels, a diff drive sits beside them: it tracks where the base has rolled, and turns where MotionCore wants it into wheel speeds."
     },
     {
       "id": "body",

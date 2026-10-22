@@ -1,0 +1,54 @@
+{
+  "about": "Narration for the BehaviourTour video, one entry per step. Steps with 'clip' reuse that rendered animation (docs/animations/<clip>.mp4), held on its last frame if the words run longer; the other steps are sections of the BehaviourTour scene in scenes.py. scripts/voiceover.py makes voice/behaviours/<id>.mp3; docs/build.sh BehaviourTour renders the scene and joins the steps with their voice (scripts/compose-tour.py). The facts are app-architecture.md's: change both together.",
+  "scene": "BehaviourTour",
+  "compose": true,
+  "steps": [
+    {
+      "id": "intro",
+      "text": "This is the behaviour stack: how a gameRobotics robot decides what to do, and how you add something new. One rule splits the work. The daemon moves. Apps decide."
+    },
+    {
+      "id": "split",
+      "text": "The daemon, in Rust, runs inside the fifty hertz tick. It owns the motion primitives: look at, approach, tilt, and joints, and Safety always applies. An app runs outside the tick, at its own pace. It owns the behaviours: what to do, and when, from what the robot sees."
+    },
+    {
+      "id": "pipeline",
+      "text": "An app is a short pipeline. Faces from the camera arrive over UDP, and become a Percept: what the robot sees this tick, in its own terms, like where your eyes are, how far away you are, and how your head is tilted. The Runner hands the percept to its behaviours. Each one answers with intents, and the client sends them to the daemon."
+    },
+    {
+      "id": "slots",
+      "text": "The body is split into three slots: gaze, approach, and tilt, one for each motion an app can ask for. Every slot has exactly one owner. Face follow is three small behaviours, one per slot. SmoothFollow looks at your eyes. KeepDistance backs off when you come close: LexJR leans back, a rover drives back. And MimicTilt mirrors the tilt of your head. They own different slots, so they all run together."
+    },
+    {
+      "id": "cat",
+      "clip": "CatVsSmooth",
+      "text": "Cat gaze is a second gaze behaviour. Smooth follow glides after your face. The cat is a state machine. It holds still, decides after a short reaction time, jumps, follows you for a moment, then darts between your eyes and mouth, and stares. When to jump is the behaviour's choice. The jump itself is the daemon's saccade."
+    },
+    {
+      "id": "switch",
+      "clip": "AppTick",
+      "text": "Here is one tick of the app. The percept goes in, each slot's owner answers, and the intents go out. Press m, and the gaze slot changes hands, from SmoothFollow to CatGaze. For half a second, the runner blends the two targets, with saccades held back, so nothing jerks. Approach and tilt never stop, because their owners didn't change."
+    },
+    {
+      "id": "personality",
+      "clip": "Personalities",
+      "text": "A personality is just parameters. Curious Cat reacts quickly, with a narrow attention cone and quick darts. Shy Puppy is slower to react, and stares for longer. Same code, a different settings file, a different character."
+    },
+    {
+      "id": "new",
+      "text": "To add a behaviour, you subclass Behaviour. Give it a name, and the slots it wants. Peekaboo wants gaze and tilt. Each tick, it gets the percept, and returns intents. When you hide and come back, it snaps to your eyes and tilts its head. Put it first in the runner's list, and it takes over gaze and tilt, while KeepDistance keeps the approach."
+    },
+    {
+      "id": "app",
+      "text": "A behaviour lives inside an app, and an app is just a process. It opens a Robot client to the daemon's API, builds a Runner with its behaviours, and ticks it fifty times a second. The project file tells gamerobotics play to start it, after the simulator, the daemon, and the camera. So a new app is one script, and one entry in a project file."
+    },
+    {
+      "id": "safe",
+      "text": "Whatever a behaviour asks for, Safety in the daemon still applies, so it can't push the robot past its limits or speeds. You can test a behaviour without a robot, by feeding it percepts and checking the intents it returns. And if you need a new kind of motion, like a gesture, that's a new primitive in the daemon, not a behaviour."
+    },
+    {
+      "id": "next",
+      "text": "Still to come: a command that scaffolds a new behaviour, replay testing on recorded percepts, and packaging, so behaviours can be shared. Until then, a behaviour is one small class, and the SDK is all you need."
+    }
+  ]
+}

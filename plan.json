@@ -1,6 +1,6 @@
 {
   "_about": "Project status for gameRobotics: the source for docs/index.html, docs/plan.html and docs/progress.html. Edit statuses here, then run python3 scripts/build-pages.py. Status: todo | doing | done | blocked. Task: [text, done].",
-  "updated": "2026-10-20",
+  "updated": "2026-10-21",
   "current": "A0",
   "foundations": [
     [
@@ -30,6 +30,18 @@
     [
       "Docs: architecture, app architecture, engine spec, product spec, update-docs skill",
       "9240c92"
+    ],
+    [
+      "Stress harness for the API, loop and simulator link (scripts/stress.py)",
+      "f420577"
+    ],
+    [
+      "A second robot from robot files only: the Pan Tilt Robot Test on the same daemon, solver and behaviours; end-to-end trial (scripts/trial.py)",
+      "531947b"
+    ],
+    [
+      "A mobile robot on the same daemon and behaviours: the Rover Robot Test (wheels in velocity mode, a diff drive, body protocol v2), and a body-neutral API (robot.approach in metres replaces robot.lean)",
+      "74cdace"
     ]
   ],
   "modules": [
@@ -558,6 +570,16 @@
       "q": "Our own daemon, JSON-RPC, no microduck dependency",
       "status": "decided",
       "default": "2026-10-16"
+    },
+    {
+      "q": "Test 'a robot is a file' with a second robot from LexJR's hardware (pan tilt, files only)",
+      "status": "decided",
+      "default": "2026-10-20"
+    },
+    {
+      "q": "A third robot, a two-wheeled rover: robot.approach in metres; the base's pose in the gaze chain with a diff drive in the daemon; unlimited travel",
+      "status": "decided",
+      "default": "2026-10-21"
     }
   ]
 }

@@ -71,7 +71,7 @@ class TickLoop(Scene):
         # between read and write is approximate (the bus round trip dominates both).
         phases = [
             ("read", 1.6, TEAL, "every joint, one transaction"),
-            ("intents", 0.05, AMBER, "newest look_at, lean"),
+            ("intents", 0.05, AMBER, "newest look_at, approach"),
             ("MotionCore", 0.06, AMBER, "aim + springs, ~30 us"),
             ("safety", 0.02, CORAL, "limits, speed, finite"),
             ("write", 1.4, CORAL, "goal positions"),
@@ -392,16 +392,16 @@ class AppTick(Scene):
                                   fill_color=AMBER, fill_opacity=0.05).move_to([-0.6, 0.2, 0])
         rlab = label("Runner", 20, AMBER, weight="BOLD").next_to(runner, UP, buff=0.08).align_to(runner, LEFT)
         slots = []
-        for k, (slot, owner, color) in enumerate([("gaze", "SmoothFollow", TEAL), ("lean", "KeepDistance", TEAL),
+        for k, (slot, owner, color) in enumerate([("gaze", "SmoothFollow", TEAL), ("approach", "KeepDistance", TEAL),
                                                   ("tilt", "MimicTilt", TEAL)]):
             y = 1.5 - k * 1.3
-            s = label(slot, 17, DIM, MONO).move_to([-2.4, y, 0])
+            s = label(slot, 15, DIM, MONO).move_to([-2.25, y, 0])
             b = box(2.7, 0.85, color, owner).move_to([0.0, y, 0])
             slots.append((s, b))
         daemon = box(2.6, 1.6, CORAL, "gamerobotd", "motion primitives").move_to([5.1, 0.4, 0])
         self.play(FadeIn(perc), Create(runner), FadeIn(rlab), *[FadeIn(VGroup(s, b)) for s, b in slots], FadeIn(daemon))
 
-        intents = ["look_at", "lean", "tilt"]
+        intents = ["look_at", "approach", "tilt"]
 
         def one_tick(gaze_text="look_at", gaze_color=AMBER):
             dots = [Dot(perc.get_right(), radius=0.07, color=DIM) for _ in slots]
@@ -432,7 +432,7 @@ class AppTick(Scene):
         self.play(Transform(note, glide))
         one_tick("look_at (blend)", DIM)
         one_tick("look_at saccade", CORAL)
-        final = label("after the glide the cat's saccades go through; lean and tilt never stopped", 17, INK).to_edge(DOWN, buff=0.5)
+        final = label("after the glide the cat's saccades go through; approach and tilt never stopped", 17, INK).to_edge(DOWN, buff=0.5)
         self.play(Transform(note, final))
         self.wait(2)
 
@@ -526,9 +526,9 @@ class CapabilityMatch(Scene):
     def construct(self):
         title = label("Behaviours target capabilities, not robots", 30, INK, weight="BOLD").to_edge(UP, buff=0.35)
         self.play(FadeIn(title))
-        robots = [("pan-tilt head", {"gaze"}, ""), ("LexJR", {"gaze", "lean", "tilt"}, ""),
+        robots = [("pan-tilt head", {"gaze"}, ""), ("LexJR", {"gaze", "approach", "tilt"}, ""),
                   ("Reachy Mini", {"gaze", "tilt"}, "no saccade: glides"), ("microduck", {"gaze", "locomotion"}, "")]
-        behaviours = [("cat gaze", {"gaze"}), ("keep distance", {"lean"}), ("mimic tilt", {"tilt"}), ("walk to you", {"locomotion", "gaze"})]
+        behaviours = [("cat gaze", {"gaze"}), ("keep distance", {"approach"}), ("mimic tilt", {"tilt"}), ("walk to you", {"locomotion", "gaze"})]
         x0, y0, dx, dy = -2.2, 1.6, 2.35, -0.95
         hdr = VGroup(*[label(r[0], 17, TEAL, weight="BOLD").move_to([x0 + i * dx, y0 + 0.75, 0]) for i, r in enumerate(robots)])
         side = VGroup(*[label(b[0], 17, AMBER).move_to([-5.0, y0 + j * dy, 0]) for j, b in enumerate(behaviours)])
@@ -678,9 +678,12 @@ class KitBuild(Scene):
         self.wait(2)
 
 
+# Narrated tours: videos with a voice-over, one step per entry in tours/<tour>.json. These helpers
+# are shared by every tour scene (scripts/voiceover.py hashes them with each scene).
+#
 # The architecture tour: the overview diagram (architecture.md) built up a block at a time, with a
-# voice-over. The words are in tour.json; scripts/voiceover.py makes voice/<id>.mp3 and the
-# lengths in voice/manifest.json, which set how long each step lasts.
+# voice-over. The words are in tours/architecture.json; scripts/voiceover.py makes
+# voice/architecture/<id>.mp3 and the lengths in its manifest.json, which set how long each step lasts.
 TOUR = pathlib.Path(__file__).resolve().parent
 
 
@@ -723,13 +726,13 @@ class ArchitectureTour(Scene):
     """The architecture overview, built up block by block, narrated."""
 
     def construct(self):
-        steps = json.loads((TOUR / "tour.json").read_text())["steps"]
-        manifest = json.loads((TOUR / "voice" / "manifest.json").read_text())
+        steps = json.loads((TOUR / "tours" / "architecture.json").read_text())["steps"]
+        manifest = json.loads((TOUR / "voice" / "architecture" / "manifest.json").read_text())
         self.caption = None
 
         def step(i, name, *anims, hold=0.5):
             sid = steps[i]["id"]
-            self.add_sound(str(TOUR / "voice" / f"{sid}.mp3"))
+            self.add_sound(str(TOUR / "voice" / "architecture" / f"{sid}.mp3"))
             spent = 0.0
             cap = label(name, 18, AMBER, weight="BOLD").to_corner(DOWN + LEFT, buff=0.3)
             if self.caption is None:
@@ -756,10 +759,13 @@ class ArchitectureTour(Scene):
 
         # Step 1: the daemon's control loop.
         dmn = frame(-6.4, -1.75, 0.15, 1.95, "gamerobotd · Rust · 50 Hz", CORAL)
-        loop = node(-2.9, 0.1, 3.8, "Control loop", "Controller · MotionCore · Safety", CORAL)
+        loop = node(-2.35, 0.1, 3.55, "Control loop", "Controller · MotionCore · Safety", CORAL)
         tick = Circle(radius=0.16, color=CORAL, stroke_width=3).next_to(loop, RIGHT, buff=0.15)
+        drive = node(-5.35, 0.1, 1.9, "Diff drive", "odometry · wheels", CORAL)
+        l_drive = link(drive[0].get_right(), loop[0].get_left(), both=True)
         step(1, "1  The daemon", ([FadeIn(dmn)], 0.6), ([FadeIn(loop), Create(tick)], 0.8),
-             ([Rotate(tick, angle=-2 * math.pi, rate_func=linear)], 1.0))
+             ([Rotate(tick, angle=-2 * math.pi, rate_func=linear)], 1.0),
+             ([FadeIn(drive), FadeIn(l_drive)], 0.8))
 
         # Step 2: RobotIo and the body.
         io = node(-1.95, -1.2, 3.9, "RobotIo", "FakeIo · RemoteIo · FeetechIo (H0)", CORAL)
@@ -774,7 +780,7 @@ class ArchitectureTour(Scene):
 
         # Step 3: the API.
         api = node(-1.3, 1.35, 2.3, "JSON-RPC API", "unix socket", CORAL)
-        l_api = link(api[0].get_bottom(), loop[0].get_top() + RIGHT * 1.6)
+        l_api = link(api[0].get_bottom(), loop[0].get_top() + RIGHT * 1.1)
         step(3, "3  The API", ([FadeIn(api), GrowArrow(l_api[0])], 0.8))
 
         # Step 4: the app.
@@ -816,8 +822,8 @@ class ArchitectureTour(Scene):
         pub = node(-5.15, -1.15, 2.2, "Publisher", "A0 · state, jitter", CORAL, planned=True)
         ctrl = node(3.1, 1.55, 2.6, "Control + status", "A0", AMBER, planned=True)
         dashb = node(-4.9, 3.0, 2.5, "Dashboard", "D0 · Tauri + web UI", INK, planned=True)
-        l_ws = link(ws[0].get_bottom() + RIGHT * 0.6, loop[0].get_top() + LEFT * 1.2)
-        l_pub = link(loop[0].get_bottom() + LEFT * 1.2, pub[0].get_top() + RIGHT * 0.5)
+        l_ws = link(ws[0].get_bottom() + RIGHT * 0.6, loop[0].get_top() + LEFT * 1.0)
+        l_pub = link(loop[0].get_bottom() + LEFT * 1.0, pub[0].get_top() + RIGHT * 0.5)
         l_ctrl = link(cli[0].get_bottom() + RIGHT * 0.9, ctrl[0].get_top() + LEFT * 0.4, both=True, planned=True)
         l_dash = link(dashb[0].get_bottom() + RIGHT * 0.3, ws[0].get_top() + RIGHT * 0.0, "WebSocket", both=True, planned=True)
         step(8, "8  Next: A0, D0, H0", ([FadeIn(ws), FadeIn(pub), FadeIn(l_ws), FadeIn(l_pub)], 1.0),
@@ -831,3 +837,202 @@ class ArchitectureTour(Scene):
         step(9, "9  Every client, by address", ([FadeIn(addr), Indicate(clients, color=AMBER, scale_factor=1.04)], 1.2),
              ([Transform(addr, addr2)], 0.9), hold=1.5)
         self.wait(1.5)
+
+
+def code_block(src, size=15):
+    """Python source as monospaced text on a dark card; one Text line per source line, so lines can be lit."""
+    lines = VGroup(*[Text(l, font=MONO, font_size=size, color=INK, disable_ligatures=True) if l.strip()
+                     else Text("x", font=MONO, font_size=size).set_opacity(0) for l in src.split("\n")])
+    lines.arrange(DOWN, aligned_edge=LEFT, buff=0.09)
+    cw = Text("x" * 20, font=MONO, font_size=size).width / 20  # Text drops leading spaces: indent by hand
+    for line, l in zip(lines, src.split("\n")):
+        line.shift(RIGHT * cw * (len(l) - len(l.lstrip(" "))))
+    card = RoundedRectangle(width=lines.width + 0.6, height=lines.height + 0.5, corner_radius=0.1, stroke_color=GRID,
+                            stroke_width=1.5, fill_color="#0C1218", fill_opacity=1).move_to(lines)
+    return VGroup(card, lines)
+
+
+class BehaviourTour(Scene):
+    """The behaviour stack, narrated: how an app decides, face follow and cat gaze, and how a new
+    behaviour (and a new app) is added. Steps with a "clip" in tours/behaviours.json reuse a rendered
+    animation; this scene renders the others, one section each (docs/build.sh --save_sections)."""
+
+    def construct(self):
+        steps = {s["id"]: s for s in json.loads((TOUR / "tours" / "behaviours.json").read_text())["steps"]}
+        manifest = json.loads((TOUR / "voice" / "behaviours" / "manifest.json").read_text())
+        caption = [None]
+
+        def step(sid, name, *anims):
+            """One section: its caption, its animations, then hold until the words are done."""
+            self.next_section(sid)
+            spent = 0.0
+            if name:
+                cap = label(name, 18, AMBER, weight="BOLD").to_corner(DOWN + LEFT, buff=0.3)
+                self.add(cap)
+                caption[0] = cap
+            for a, rt in anims:
+                self.play(*a, run_time=rt)
+                spent += rt
+            self.wait(max(0.3, 0.3 + manifest[sid]["seconds"] + 0.6 - spent))
+
+        def clear():
+            self.remove(*self.mobjects)
+
+        # intro
+        title = label("The behaviour stack", 42, INK, weight="BOLD").move_to([0, 0.9, 0])
+        sub = label("how a robot decides what to do, and how you add something new", 22, DIM).next_to(title, DOWN, buff=0.25)
+        rule = VGroup(label("The daemon moves.", 30, CORAL, weight="BOLD"), label("Apps decide.", 30, AMBER, weight="BOLD")
+                      ).arrange(RIGHT, buff=0.5).next_to(sub, DOWN, buff=0.8)
+        step("intro", "", ([FadeIn(title), FadeIn(sub)], 1.0), ([FadeIn(rule[0])], 0.6), ([FadeIn(rule[1])], 0.6))
+        clear()
+
+        # split: daemon and app side by side
+        def column(x, color, head, rows):
+            r = RoundedRectangle(width=5.6, height=3.6, corner_radius=0.14, stroke_color=color, stroke_width=2.5,
+                                 fill_color=color, fill_opacity=0.06).move_to([x, 0.3, 0])
+            h = label(head, 26, color, weight="BOLD").next_to(r.get_top(), DOWN, buff=0.35)
+            items = VGroup(*[label(t, 18, INK) for t in rows]).arrange(DOWN, aligned_edge=LEFT, buff=0.32)
+            items.next_to(h, DOWN, buff=0.45)
+            return VGroup(r, h, items)
+        dmn = column(-3.3, CORAL, "gamerobotd", ["Rust, inside the 50 Hz tick", "owns the motion primitives:",
+                                                  "   look_at · approach · tilt · joints", "Safety always applies"])
+        app = column(3.3, AMBER, "an app", ["Python SDK, at its own pace", "owns the behaviours:", "   what to do, and when,",
+                                             "   from what the robot sees"])
+        ar = Arrow([0.45, 0.3, 0], [-0.45, 0.3, 0], buff=0, color=AMBER, stroke_width=3)
+        it = label("intents", 15, AMBER, MONO).next_to(ar, UP, buff=0.12)
+        step("split", "1  The daemon moves; apps decide", ([FadeIn(dmn[0]), FadeIn(dmn[1])], 0.6),
+             ([FadeIn(dmn[2], lag_ratio=0.3)], 1.2), ([FadeIn(app[0]), FadeIn(app[1])], 0.6),
+             ([FadeIn(app[2], lag_ratio=0.3)], 1.2), ([GrowArrow(ar), FadeIn(it)], 0.6))
+        clear()
+
+        # pipeline: camera to daemon
+        xs = [-6.0, -3.6, -1.2, 1.2, 3.6, 6.0]
+        specs = [("Webcam", None, TEAL), ("face_cam", "MediaPipe", TEAL), ("Percept", "what it sees", INK),
+                 ("Runner", "behaviours", AMBER), ("Robot", "client", AMBER), ("gamerobotd", "Rust", CORAL)]
+        boxes = [node(x, 1.2, 1.75, t, sub_, c) for x, (t, sub_, c) in zip(xs, specs)]
+        links = [Arrow(boxes[i][0].get_right(), boxes[i + 1][0].get_left(), buff=0.06, stroke_width=2.2, color=DIM,
+                       tip_length=0.14, max_tip_length_to_length_ratio=0.3) for i in range(5)]
+        tags = [label(t, 12, DIM, MONO).next_to(links[i], UP, buff=0.5) for i, t in [(1, "UDP"), (4, "JSON-RPC")]]
+        fields = VGroup(*[label(f, 15, INK, MONO) for f in ("face.eyes      where your eyes are", "face.distance  how far away",
+                                                             "face.tilt      your head's tilt", "events         e.g. calibrate")]
+                        ).arrange(DOWN, aligned_edge=LEFT, buff=0.16).move_to([-1.2, -1.3, 0])
+        fbox = RoundedRectangle(width=fields.width + 0.5, height=fields.height + 0.4, corner_radius=0.1, stroke_color=GRID,
+                                fill_color="#0C1218", fill_opacity=1).move_to(fields)
+        hook = DashedLine(boxes[2][0].get_bottom(), fbox.get_top(), color=GRID, dash_length=0.08)
+        intents = label("intents: look_at · approach · tilt", 13, AMBER, MONO).next_to(links[3], DOWN, buff=0.6)
+        dot = Dot(color=TEAL, radius=0.08).move_to(boxes[0][0].get_center())
+        step("pipeline", "2  An app is a short pipeline", ([FadeIn(boxes[0]), FadeIn(boxes[1]), GrowArrow(links[0])], 0.7),
+             ([FadeIn(boxes[2]), GrowArrow(links[1]), FadeIn(tags[0])], 0.6),
+             ([FadeIn(fbox), Create(hook), FadeIn(fields, lag_ratio=0.25)], 1.4),
+             ([FadeIn(boxes[3]), GrowArrow(links[2])], 0.6),
+             ([FadeIn(boxes[4]), GrowArrow(links[3]), FadeIn(intents)], 0.6),
+             ([FadeIn(boxes[5]), GrowArrow(links[4]), FadeIn(tags[1])], 0.6),
+             ([MoveAlongPath(dot, Line(boxes[0][0].get_center(), boxes[5][0].get_center()))], 2.0, ), ([FadeOut(dot)], 0.2))
+        clear()
+
+        # slots: one owner each
+        head = label("three slots, one owner each", 24, INK, weight="BOLD").move_to([0, 2.9, 0])
+        rows = []
+        for k, (slot, who, sends, col) in enumerate([("gaze", "SmoothFollow", "look_at(face.eyes)", AMBER),
+                                                      ("approach", "KeepDistance", "back off when you're close", AMBER),
+                                                      ("tilt", "MimicTilt", "tilt: mirror your head", AMBER)]):
+            y = 1.5 - k * 1.45
+            sl = label(slot, 22, DIM, MONO).move_to([-5.2, y, 0])
+            ow = node(-1.9, y, 3.0, who, None, col)
+            ar = Arrow(ow[0].get_right(), [1.3, y, 0], buff=0.08, stroke_width=2.2, color=DIM, tip_length=0.14)
+            se = label(sends, 16, INK, MONO).next_to(ar, RIGHT, buff=0.2)
+            rows.append(VGroup(sl, ow, ar, se))
+        note = label("different slots, so all three run together", 18, TEAL).move_to([0, -2.9, 0])
+        step("slots", "3  Face follow: three behaviours", ([FadeIn(head)], 0.5),
+             *[([FadeIn(r[0]), FadeIn(r[1])], 0.5) for r in rows],
+             ([*[GrowArrow(r[2]) for r in rows], *[FadeIn(r[3]) for r in rows]], 0.9),
+             ([Indicate(VGroup(*[r[1] for r in rows]), color=TEAL, scale_factor=1.04), FadeIn(note)], 1.0))
+        clear()
+
+        # new: a behaviour of your own
+        src = """class Peekaboo(Behaviour):
+    name = "peekaboo"
+    slots = frozenset({"gaze", "tilt"})
+
+    def start(self, previous):
+        self.hidden = False
+
+    def tick(self, seen):
+        if seen.face is None:
+            self.hidden = True
+            return [Intent.look_at(None)]
+        if self.hidden:              # you're back
+            self.hidden = False
+            return [Intent.look_at(seen.face.eyes, saccade=True),
+                    Intent.tilt(0.3)]
+        return [Intent.look_at(seen.face.eyes), Intent.tilt(0.0)]"""
+        code = code_block(src, 14).move_to([-2.3, 0.35, 0])
+        lines = code[1]
+        table = VGroup()
+        owners = {}
+        for k, (slot, who) in enumerate([("gaze", "SmoothFollow"), ("approach", "KeepDistance"), ("tilt", "MimicTilt")]):
+            y = 1.3 - k * 0.95
+            sl = label(slot, 18, DIM, MONO).move_to([3.7, y, 0])
+            ow = node(5.6, y, 2.4, who, None, AMBER, h=0.65)
+            owners[slot] = ow
+            table.add(sl, ow)
+        th = label("owners", 15, DIM, MONO).next_to(table, UP, buff=0.3)
+        run = label("Runner([Peekaboo(), SmoothFollow(), KeepDistance(), MimicTilt()], robot.notify)", 13, INK, MONO
+                    ).move_to([0, -3.05, 0])
+        new_g = node(5.6, 1.3, 2.4, "Peekaboo", None, TEAL, h=0.65)
+        new_t = node(5.6, -0.6, 2.4, "Peekaboo", None, TEAL, h=0.65)
+
+        def lit(i, j):
+            return Indicate(VGroup(*lines[i:j]), color=TEAL, scale_factor=1.02)
+        step("new", "4  A behaviour of your own", ([FadeIn(code[0]), FadeIn(lines, lag_ratio=0.05)], 1.4),
+             ([lit(1, 3)], 0.9), ([FadeIn(th), FadeIn(table)], 0.6), ([lit(7, 16)], 1.4), ([lit(11, 15)], 1.0),
+             ([FadeIn(run)], 0.6), ([Transform(owners["gaze"], new_g), Transform(owners["tilt"], new_t)], 0.9),
+             ([Indicate(owners["approach"], color=AMBER, scale_factor=1.05)], 0.7))
+        clear()
+
+        # app: an app is a process
+        app_src = """robot = Robot()                         # gamerobotd's API
+robot.call("robot.enable", {"on": True})
+runner = Runner([Peekaboo(), KeepDistance()], robot.notify)
+while True:                             # 50 times a second
+    runner.tick(percept(...))"""
+        toml = ('[[process]]\nname = "app"\ncmd = [".venv-bam/bin/python", "peekaboo_app.py"]\n'
+                'ready = "enabled;"')
+        c1 = code_block(app_src, 14).move_to([0, 1.85, 0])
+        c1t = label("peekaboo_app.py", 14, DIM, MONO).next_to(c1, UP, buff=0.12).align_to(c1, LEFT)
+        c2 = code_block(toml, 14).move_to([-2.6, -1.0, 0])
+        c2t = label("projects/<yours>/project.toml", 14, DIM, MONO).next_to(c2, UP, buff=0.12).align_to(c2, LEFT)
+        chain = VGroup(*[node(0, 0, 1.25, n, None, c, h=0.5) for n, c in
+                         (("sim", INK), ("daemon", CORAL), ("camera", TEAL), ("app", AMBER))]).arrange(DOWN, buff=0.18)
+        chain.move_to([4.6, -1.1, 0])
+        play = label("gamerobotics play", 14, AMBER, MONO).next_to(chain, UP, buff=0.18)
+        step("app", "5  An app is a process", ([FadeIn(c1t), FadeIn(c1[0]), FadeIn(c1[1], lag_ratio=0.1)], 1.2),
+             ([Indicate(c1[1][0], color=TEAL, scale_factor=1.02)], 0.8), ([Indicate(c1[1][2], color=TEAL, scale_factor=1.02)], 0.8),
+             ([Indicate(VGroup(*c1[1][3:5]), color=TEAL, scale_factor=1.02)], 0.8),
+             ([FadeIn(c2t), FadeIn(c2)], 0.8), ([FadeIn(play)], 0.4), ([FadeIn(chain, lag_ratio=0.4)], 1.4),
+             ([Indicate(chain[3], color=AMBER, scale_factor=1.1)], 0.8))
+        clear()
+
+        # safe: what a behaviour can and can't do
+        cards = VGroup()
+        for t, d, c in (("Safety still applies", "limits and speeds hold,\nwhatever a behaviour asks", CORAL),
+                        ("Test without a robot", "feed it Percepts,\ncheck the intents it returns", TEAL),
+                        ("New kind of motion?", "a gesture is a new\ndaemon primitive, not a behaviour", AMBER)):
+            r = RoundedRectangle(width=4.0, height=2.6, corner_radius=0.14, stroke_color=c, stroke_width=2.5,
+                                 fill_color=c, fill_opacity=0.06)
+            h = label(t, 21, c, weight="BOLD")
+            b = Text(d, font=SANS, font_size=17, color=INK, line_spacing=1.1)
+            VGroup(h, b).arrange(DOWN, buff=0.35).move_to(r)
+            cards.add(VGroup(r, h, b))
+        cards.arrange(RIGHT, buff=0.35).move_to([0, 0.3, 0])
+        step("safe", "6  The guard rails", ([FadeIn(cards[0])], 0.7), ([FadeIn(cards[1])], 0.7), ([FadeIn(cards[2])], 0.7))
+        clear()
+
+        # next: what's planned
+        nh = label("still to come", 24, DIM, weight="BOLD").move_to([0, 2.4, 0])
+        planned = VGroup(*[node(0, 0, 6.4, t, d, INK, planned=True, h=0.85) for t, d in
+                           (("gamerobotics behaviour new", "scaffold a new behaviour"),
+                            ("replay testing", "run a behaviour on recorded percepts"),
+                            ("packaging", "share behaviours like apps"))]).arrange(DOWN, buff=0.3).move_to([0, 0.3, 0])
+        today = label("today: one small class, and the SDK", 22, TEAL, weight="BOLD").move_to([0, -2.3, 0])
+        step("next", "7  What's next", ([FadeIn(nh)], 0.4), ([FadeIn(planned, lag_ratio=0.4)], 1.6), ([FadeIn(today)], 0.7))

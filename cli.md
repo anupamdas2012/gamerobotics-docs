@@ -19,6 +19,8 @@ either is missing. The first `play` asks for camera access for your terminal.
 | I want to… | run |
 |---|---|
 | see LexJR follow my face | `bin/gamerobotics play lexjr` |
+| run the Pan Tilt Robot Test instead | `bin/gamerobotics play pantilt` |
+| run the Rover Robot Test (it turns and drives) | `bin/gamerobotics play rover` |
 | try another personality | `bin/gamerobotics play lexjr --personality shy-puppy` |
 | run without a window or the camera | `bin/gamerobotics play lexjr --headless --no-camera` |
 | check everything is ready, without starting | `bin/gamerobotics doctor lexjr` |
@@ -40,6 +42,8 @@ together.
 bin/gamerobotics play lexjr
 bin/gamerobotics play lexjr --personality attentive-owl
 bin/gamerobotics play lexjr --headless --no-camera --seconds 20
+bin/gamerobotics play pantilt                    # the 2-DOF pan tilt, same daemon and app
+bin/gamerobotics play rover                      # the two-wheeled rover: it turns to look and drives to keep its distance
 ```
 
 | flag | what it does |
@@ -148,10 +152,64 @@ target/release/gamerobotd --io sim                      # the simulator on 127.0
 | `--socket PATH` | the API socket | `/tmp/gamerobotd.sock` |
 | `--kinematics native\|mujoco` | the gaze kinematics; `mujoco` needs a build with `--features mujoco` | `native` |
 
+## Test scripts
+
+Run from the gamerobotics directory.
+
+### scripts/golden.sh
+
+Exports each robot's golden data from lexjr-sim (LexJR, then the pan tilt), then runs gr-motion's
+and gr-control's tests against it. Run it after changing gr-motion or lexjr-sim's motion Python.
+
+```sh
+scripts/golden.sh
+```
+
+### scripts/trial.py
+
+Runs one robot end to end: its simulated body (headless), gamerobotd and the face follow app,
+with synthetic faces instead of the camera. With the app stopped, it then sends `look_at` targets
+past the robot's limits. It checks positions against the limits, target speed per tick (a
+wheel's speed and acceleration), gaze wobble on a held face, and missed ticks. On a wheeled
+robot it also checks the approach against what keeping the distance asks (within 2 cm) and the
+daemon's odometry against the body's true pose (`body_server --truth-log`, within 1 cm and 1°).
+Then it prints JSON and PASS or FAIL. It uses its own ports
+and socket (body 7698, faces 5098, `/tmp/gamerobotd-trial-<pid>.sock`), so it can run beside a
+live demo.
+
+```sh
+../lexjr-sim/.venv-bam/bin/python scripts/trial.py pantilt
+../lexjr-sim/.venv-bam/bin/python scripts/trial.py lexjr --gaze smooth --hold 5
+../lexjr-sim/.venv-bam/bin/python scripts/trial.py rover --hold 4
+```
+
+| flag | what it does |
+|---|---|
+| `lexjr\|pantilt\|rover` | the robot |
+| `--gaze smooth\|cat\|both` | which gaze behaviours to run (default both) |
+| `--hold S` | seconds each synthetic face holds still (default 3; LexJR settles in about 5) |
+| `--json FILE` | also write the results here |
+
+### scripts/stress.py
+
+Stresses gamerobotd's API, loop and simulator link. Each test starts its own daemon on its own
+socket, and a fake body on port 7699.
+
+```sh
+python3 scripts/stress.py              # every test
+python3 scripts/stress.py flood stalled
+python3 scripts/stress.py --list
+```
+
 ## The LexJR processes (lexjr-sim)
 
 `play` runs these with the right settings. Run them by hand only to work on one of them. Each
 runs from the `lexjr-sim` directory with its own environment.
+
+**Which robot:** each runs LexJR unless `LEXJR_ROBOT` names another robot file, relative to
+lexjr-sim, for example `LEXJR_ROBOT=pantilt/robot.toml .venv-bam/bin/python body_server.py`
+(`rover/robot.toml` for the rover). A project sets it in its `[env]`. `lookat.py` refuses the
+rover: it drives servos to angles, and a wheeled robot needs gamerobotd's diff drive.
 
 ### body_server.py
 
@@ -167,6 +225,7 @@ The simulated body: MuJoCo, LexJR's servo models, and the viewer.
 | `--headless` | no viewer |
 | `--host`, `--port` | where gamerobotd connects (default `127.0.0.1:7600`) |
 | `--viz-port` | UDP port for the face and gaze line to draw (default 7610) |
+| `--truth-log PATH` | write the true base pose after every read (JSON lines `{"t", "pose": [x, y, heading]}`), to check a wheeled robot's odometry against; never sent to the daemon |
 
 **In the viewer:** `]` gives the side view, and `Esc` returns to the front view.
 

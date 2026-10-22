@@ -1,10 +1,11 @@
 # gameRobotics app architecture
 
-Status: current as of 2026-10-19 (gamerobotics `ba84104`, lexjr-sim `93a7fb0`).
+Status: current as of 2026-10-21 (gamerobotics `74cdace`, lexjr-sim `db5ca29`).
 How an app is built on gamerobotd: the layers, the SDK, and how a behaviour is written, with face
 follow and cat gaze as the worked examples. The daemon itself is in
 [architecture.md](architecture.md); exact behaviour and settings are in [spec.md](spec.md) §8 and
-§8a. Kept current by the `update-docs` skill.
+§8a. Kept current by the `update-docs` skill. A narrated video walks through this page
+(`docs/animations/BehaviourTour.mp4`, played in architecture.html under "How an app is built").
 
 ## The split
 
@@ -14,15 +15,20 @@ follow and cat gaze as the worked examples. The daemon itself is in
 |---|---|---|
 | language | Rust | any; Python with the SDK |
 | runs | inside the 50 Hz tick | outside it, at its own rate |
-| owns | **motion primitives**: `look_at` (glide or saccade), `lean`, `tilt`, `joints` | **behaviours**: what to do and when, from what the robot sees |
+| owns | **motion primitives**: `look_at` (glide or saccade), `approach`, `tilt`, `joints` | **behaviours**: what to do and when, from what the robot sees |
 | knows about | joints, limits, kinematics, timing | faces, moods, games, people |
 | safety | always applies Safety | cannot bypass it |
 
 A primitive belongs in the daemon when it says *how* the body moves and needs the tick's timing
 to look right: a saccade's 70–160 ms quintic, the head's spring, the gravity trim. A behaviour
 belongs in an app when it decides *what* and *when*: where a face is, when to glance, whether to
-lean. Cat gaze shows the line: *when* to jump is the app's choice (a random reaction time,
+come closer. Cat gaze shows the line: *when* to jump is the app's choice (a random reaction time,
 attention cone, darts), but *the jump itself* is the daemon's saccade.
+
+**Intents are body-neutral.** A behaviour says what to do, never how a body does it: `look_at`
+is a world point and `approach` metres toward it. LexJR reaches them with its neck and a lean,
+the pan tilt with two servos, the rover by turning and driving on its wheels. So the same
+behaviours, and the same personality numbers, run on all three.
 
 **The connection rule:** an app and any front end reach the robot through APIs by address,
 never by being on the same machine. See [architecture.md](architecture.md), "The connection
@@ -35,9 +41,9 @@ rule".
  ┌───────┐   ┌──────────────────┐   ┌──────────┐   ┌─────────────────────────┐   ┌──────────┐   ┌────────────┐
  │webcam │──►│ face_cam.py      │──►│ Percept  │──►│ Runner                  │──►│ Robot    │──►│ gamerobotd │
  │       │UDP│ MediaPipe → 160  │   │ face,    │   │  gaze: SmoothFollow     │   │ client   │   │ look_at    │
- └───────┘   │ landmarks        │   │ distance,│   │        or CatGaze  [m]  │   │ JSON-RPC │   │ lean, tilt │
-             │ FaceTarget →     │   │ tilt,    │   │  lean: KeepDistance     │   │ notify   │   │ MotionCore │
-             │ world points     │   │ eyes,    │   │  tilt: MimicTilt        │   └──────────┘   │ Safety     │
+ └───────┘   │ landmarks        │   │ distance,│   │        or CatGaze  [m]  │   │ JSON-RPC │   │ approach,  │
+             │ FaceTarget →     │   │ tilt,    │   │  approach: KeepDistance │   │ notify   │   │ tilt;      │
+             │ world points     │   │ eyes,    │   │  tilt: MimicTilt        │   └──────────┘   │ MotionCore │
              └──────────────────┘   │ mouth    │   └─────────────────────────┘                  └────────────┘
                 lexjr-sim            SDK type         SDK runner + LexJR plugins       SDK            Rust
 ```
@@ -61,21 +67,21 @@ There are three slots, one per motion primitive a behaviour can drive:
 | slot | intent | primitive in the daemon |
 |---|---|---|
 | `gaze` | `Intent.look_at(target, saccade=False)` | MotionCore's whole-chain and head aim; spring or saccade |
-| `lean` | `Intent.lean(amount)` | the lean layer on `neck_pitch` |
+| `approach` | `Intent.approach(distance)` (m) | the approach layer: on LexJR a lean on `neck_pitch` (about 5 cm), on a rover driving along its line of sight |
 | `tilt` | `Intent.tilt(amount)` | the head's roll target about its gaze |
 
 - **One owner per slot.** At the start, each slot goes to the first behaviour in the list that
   wants it. `Runner.select(name)` gives a behaviour all its slots; `Runner.cycle(slot)` moves a
   slot to the next behaviour that wants it.
 - **Sharing and replacing.** Behaviours that want different slots run together (smooth follow
-  looks while keep-distance leans). Behaviours that want the same slot replace each other
+  looks while keep-distance comes closer or backs off). Behaviours that want the same slot replace each other
   (smooth follow or cat gaze).
 - **Dropped intents.** A behaviour may return an intent for a slot it does not own; the runner
   drops it, so a behaviour cannot take over a slot by accident.
 - **Handover.** When the gaze slot changes hands, the new owner's `start(previous)` gets the last
   intent per slot, so it can begin where the robot is looking. For the next 0.5 s the runner
   blends the outgoing and incoming targets along a minimum-jerk curve, with saccades held back.
-  Lean and tilt need no blend: the daemon eases both.
+  Approach and tilt need no blend: the daemon eases both.
 
 ## A tick of the app
 
@@ -85,7 +91,7 @@ At 50 Hz, `face_follow.py`:
    (calibrate the distance) becomes an event; `m` cycles the gaze slot.
 2. **Builds** the `Percept`. A face counts as seen until 1 s after it was last detected.
 3. **Runs** the owners: each returns intents.
-4. **Sends** the winning intents: `robot.look_at`, `robot.lean`, `robot.tilt`.
+4. **Sends** the winning intents: `robot.look_at`, `robot.approach`, `robot.tilt`.
 5. **Draws:** sends the gaze target and the face mesh to the simulator's viewer (visualization only).
 
 ## Example 1: face follow
@@ -95,7 +101,7 @@ Face follow is three behaviours, one per slot:
 | behaviour | slot | from the percept | sends |
 |---|---|---|---|
 | `SmoothFollow` | gaze | `face.eyes` | `look_at(face.eyes)` every tick; lost, a target easing home (0.5 s) |
-| `KeepDistance` | lean | `face.distance`, the `calibrate` event | `lean(a)`: 1.5° per cm beyond 2 cm from your normal distance, ≤ 30° |
+| `KeepDistance` | approach | `face.distance`, the `calibrate` event | `approach(d)`: `[keep_distance] gain` × your distance change beyond 2 cm from your normal distance, in metres (LexJR 0.256, which its lean turns into its old 1.5° per cm; the rover 1.0, all of it) |
 | `MimicTilt` | tilt | `face.tilt` | `tilt(−gain × tilt)`: mirrored, beyond 3°, ≤ 20° |
 
 `SmoothFollow` is the simplest possible gaze behaviour (abridged: the real one in
@@ -170,7 +176,7 @@ switches live:
    where the robot already looks, so nothing moves until it decides to.
 3. For 0.5 s the runner blends the targets, saccades held back. Cat to smooth glides to your face;
    smooth to cat holds still.
-4. Lean and tilt never stop: their owners did not change.
+4. Approach and tilt never stop: their owners did not change.
 
 ## Writing your own behaviour
 
@@ -196,7 +202,7 @@ class Peekaboo(Behaviour):
 ```
 
 Add it to the runner's list in `face_follow.py` (or your own app), or `select("peekaboo")` it
-live. It owns `gaze` and `tilt`; `KeepDistance` keeps the lean.
+live. It owns `gaze` and `tilt`; `KeepDistance` keeps the approach.
 
 - **Test it without a robot:** feed it `Percept`s and check the intents, as
   `lexjr-sim/tests/test_behaviours.py` does for cat gaze.

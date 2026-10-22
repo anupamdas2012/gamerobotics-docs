@@ -192,6 +192,7 @@ flowchart TB
         API["JSON-RPC API&lt;br/&gt;unix socket"]
         WS["WebSocket API (A0)"]
         LOOP["Control loop&lt;br/&gt;Controller, MotionCore, Safety"]
+        DRIVE["Diff drive&lt;br/&gt;odometry, wheel speeds"]
         PUB["Publisher (A0)&lt;br/&gt;state, jitter histogram"]
         IO["RobotIo&lt;br/&gt;FakeIo, RemoteIo, FeetechIo (H0)"]
     end
@@ -217,7 +218,8 @@ flowchart TB
     WS --&gt; LOOP
     LOOP --&gt; PUB
     LOOP --&gt; IO
-    IO &lt;--&gt;|TCP 7600, body protocol, 1/tick| BODY
+    LOOP &lt;--&gt;|base pose, wheel speeds| DRIVE
+    IO &lt;--&gt;|TCP 7600, body protocol v2, 1/tick| BODY
     IO &lt;--&gt;|serial 1 Mbit/s| SERVOS
     BODY --&gt; VIEW
     RUNNER -.-&gt;|UDP 7610, viz| VIEW
@@ -229,14 +231,14 @@ flowchart TB
     </figure>
     <figure>
       <div class="film"><video src="animations/ArchitectureTour.mp4" poster="animations/ArchitectureTour.jpg" playsinline controls preload="metadata" aria-label="Narrated video building the architecture diagram one block at a time: the daemon, the body, the API, apps, perception, the viewer, the tools, what is planned, and the connection rule"></video></div>
-      <figcaption>The same diagram built up one block at a time, narrated (2 min 8 s, with sound; voice: ElevenLabs, Brian). Words: <code>docs/animations/tour.json</code>; voice: <code>scripts/voiceover.py</code>.</figcaption>
+      <figcaption>The same diagram built up one block at a time, narrated (2 min 8 s, with sound; voice: ElevenLabs, Brian). Words: <code>docs/animations/tours/architecture.json</code>; voice: <code>scripts/voiceover.py</code>.</figcaption>
     </figure>
   </section>
 
   <section id="map">
     <div class="eyebrow"><span>System map</span></div>
     <h2>Five processes, one owner</h2>
-    <p class="prose">Perception and behaviour live in apps. gamerobotd owns the robot. The box on the right is whatever <code>RobotIo</code> is plugged in: the MuJoCo body today, Feetech servos next. Nothing to its left changes when it does.</p>
+    <p class="prose">Perception and behaviour live in apps. gamerobotd owns the robot: LexJR, the pan tilt or the two-wheeled rover, each a robot file; on the rover, its diff drive turns the motion into wheel speeds. The box on the right is whatever <code>RobotIo</code> is plugged in: the MuJoCo body today, Feetech servos next. Nothing to its left changes when it does.</p>
     <figure>
       <div class="map">
         <svg viewBox="0 -10 980 340" role="img" aria-label="face_cam sends faces over UDP to face_follow, which sends intents over JSON-RPC to gamerobotd; gamerobotd drives the MuJoCo body through RobotIo; face_follow also sends the face to the viewer; gamerobotctl talks to gamerobotd">
@@ -249,12 +251,12 @@ flowchart TB
           <g class="node n-d"><rect x="450" y="30" width="250" height="250" rx="10"/><text class="t-title" x="575" y="58" text-anchor="middle">gamerobotd</text><text class="t-sub" x="575" y="76" text-anchor="middle">Rust · 50 Hz</text></g>
           <g class="inner">
             <rect x="472" y="92" width="206" height="34" rx="4"/><text x="575" y="114" text-anchor="middle">server: JSON-RPC, threads</text>
-            <rect x="472" y="134" width="206" height="34" rx="4"/><text x="575" y="156" text-anchor="middle">Controller::tick</text>
+            <rect x="472" y="134" width="206" height="34" rx="4"/><text x="575" y="156" text-anchor="middle">Controller · diff drive</text>
             <rect x="472" y="176" width="206" height="34" rx="4"/><text x="575" y="198" text-anchor="middle">MotionCore (gr-motion)</text>
             <rect x="472" y="218" width="206" height="34" rx="4"/><text x="575" y="240" text-anchor="middle">Safety → RobotIo</text>
           </g>
           <line class="seam" x1="745" y1="30" x2="745" y2="300"/><text class="lbl" x="752" y="300">RobotIo seam</text>
-          <g class="node n-body"><rect x="790" y="190" width="170" height="72" rx="8"/><text class="t-title" x="875" y="222" text-anchor="middle">MuJoCo body</text><text class="t-sub" x="875" y="242" text-anchor="middle">body_server, BAM</text></g>
+          <g class="node n-body"><rect x="790" y="190" width="170" height="72" rx="8"/><text class="t-title" x="875" y="222" text-anchor="middle">MuJoCo body</text><text class="t-sub" x="875" y="242" text-anchor="middle">LexJR, pan tilt or rover</text></g>
           <g class="node n-body" opacity="0.55"><rect x="790" y="70" width="170" height="60" rx="8"/><text class="t-title" x="875" y="98" text-anchor="middle">Feetech servos</text><text class="t-sub" x="875" y="116" text-anchor="middle">FeetechIo, planned</text></g>
           <path class="edge e-perc" d="M170 96 H226" marker-end="url(#ah)"/><text class="lbl" x="198" y="88" text-anchor="middle">UDP 5005</text>
           <path class="edge e-int" d="M390 96 H446" marker-end="url(#ah)"/><text class="lbl" x="418" y="88" text-anchor="middle">intents</text>
@@ -271,7 +273,7 @@ flowchart TB
         <tbody>
           <tr><td><code>gamerobotd</code></td><td>gamerobotics</td><td>the robot: the loop, safety, motion, the hardware link</td></tr>
           <tr><td><code>gamerobotctl</code></td><td>gamerobotics</td><td>nothing; a command line over the API</td></tr>
-          <tr><td><code>body_server.py</code></td><td>lexjr-sim</td><td>LexJR's simulated body: MuJoCo, BAM servo models, the viewer</td></tr>
+          <tr><td><code>body_server.py</code></td><td>lexjr-sim</td><td>the robot's simulated body (LexJR, or the robot <code>LEXJR_ROBOT</code> names): MuJoCo, BAM servo models, the viewer</td></tr>
           <tr><td><code>face_cam.py</code></td><td>lexjr-sim</td><td>the webcam and face perception; pixels never leave it</td></tr>
           <tr><td><code>face_follow.py</code></td><td>lexjr-sim</td><td>a behaviour Runner: smooth follow or cat gaze, keep distance, mimic tilt</td></tr>
         </tbody>
@@ -291,8 +293,8 @@ flowchart TB
         <dl>
           <dt>read</dt><dd>every joint (and IMU) in one transaction</dd>
           <dt>apply</dt><dd>client messages since the last tick, in order, never blocking</dd>
-          <dt>decide</dt><dd>joints mode, or MotionCore on this tick's positions</dd>
-          <dt>safety</dt><dd>finite, within limits, within speed; the only writer</dd>
+          <dt>decide</dt><dd>joints mode, or MotionCore on this tick's positions; on a rover, odometry in and wheel speeds out</dd>
+          <dt>safety</dt><dd>finite, within limits, within speed (a wheel: within speed and acceleration); the only writer</dd>
           <dt>write</dt><dd>goal positions; state to subscribers, dropped if they lag</dd>
         </dl>
         <p>A failed read writes nothing that tick. Torque comes on only when someone enables the robot, and then it holds the pose it is in.</p>
@@ -314,7 +316,7 @@ flowchart TB
           <thead><tr><th>Link</th><th>Transport</th><th>Rate</th></tr></thead>
           <tbody>
             <tr><td>app ↔ daemon</td><td>unix socket, JSON-RPC 2.0, one object a line</td><td class="num">≤ 50/s</td></tr>
-            <tr><td>daemon ↔ sim</td><td>TCP 7600, body protocol v1</td><td class="num">1/tick</td></tr>
+            <tr><td>daemon ↔ sim</td><td>TCP 7600, body protocol v2 (joint modes; wheels stop when not renewed)</td><td class="num">1/tick</td></tr>
             <tr><td>camera → app</td><td>UDP 5005, 160 landmarks, 3.7 kB</td><td class="num">~30/s</td></tr>
             <tr><td>app → viewer</td><td>UDP 7610, visualization only</td><td class="num">≤ 50/s</td></tr>
           </tbody>
@@ -335,14 +337,14 @@ flowchart TB
         <p><code>robot.look_at</code> hands the joints to MotionCore, which runs inside the tick:</p>
         <dl>
           <dt>body</dt><dd>whole-chain aim, 8° deadband, springs 0.9 / 1.4 Hz</dd>
-          <dt>layers</dt><dd>idle sway, and the lean (0.8 Hz, ≤ 30°)</dd>
+          <dt>layers</dt><dd>idle sway, and the approach in metres (0.8 Hz): LexJR leans (≤ 30°, about 5 cm), a rover drives along its line of sight</dd>
           <dt>tilt</dt><dd>the head's roll about its gaze, as the solver's target (2 Hz, ≤ 20°)</dd>
           <dt>head</dt><dd>aimed against the commanded body, 5 Hz spring</dd>
           <dt>saccade</dt><dd>or a jump: a quintic from the present velocity, 60 ms + 2.5 ms/°</dd>
           <dt>trim</dt><dd>integrates measured gaze error once still (gravity sag)</dd>
           <dt>solver</dt><dd>damped least squares: gaze, then the tilt (level by default), then posture</dd>
         </dl>
-        <p>Kinematics come from a native chain exported from the MJCF; <code>--kinematics mujoco</code> uses MuJoCo itself instead.</p>
+        <p>Kinematics come from a native chain exported from the MJCF; <code>--kinematics mujoco</code> uses MuJoCo itself instead. A rover's chain is its base: <code>base_x</code>, <code>base_y</code> (slides) and <code>base_yaw</code>, aimed from where odometry says it is.</p>
       </div>
     </div>
   </section>
@@ -352,18 +354,22 @@ flowchart TB
     <h2>How an app is built</h2>
     <p class="prose">The daemon moves; apps decide. An app turns what the robot sees into intents. The <code>gamerobotics</code> Python SDK supplies the robot-neutral parts (Percept, Behaviour, Intent, Runner, the client), and LexJR's app supplies its perception and its behaviours. Details and code are in <a href="app-architecture.md">app-architecture.md</a>.</p>
     <figure>
+      <div class="film"><video src="animations/BehaviourTour.mp4" poster="animations/BehaviourTour.jpg" playsinline controls preload="metadata" aria-label="Narrated video of the behaviour stack: the daemon moves and apps decide, the app pipeline, face follow's three behaviours, cat gaze, switching live, personalities, writing a new behaviour, an app as a process, and what's next"></video></div>
+      <figcaption>The behaviour stack, narrated: face follow, cat gaze, personalities, and how to add a behaviour and an app (with sound). Words: <code>docs/animations/tours/behaviours.json</code>.</figcaption>
+    </figure>
+    <figure>
       <div class="map">
-        <svg viewBox="0 0 980 250" role="img" aria-label="Layers of an app: the webcam feeds face_cam perception, which builds a Percept; the Runner gives the gaze, lean and tilt slots to behaviours; the client sends their intents to gamerobotd">
+        <svg viewBox="0 0 980 250" role="img" aria-label="Layers of an app: the webcam feeds face_cam perception, which builds a Percept; the Runner gives the gaze, approach and tilt slots to behaviours; the client sends their intents to gamerobotd">
           <g class="node n-perc"><rect x="10" y="60" width="150" height="110" rx="8"/><text class="t-title" x="85" y="92" text-anchor="middle">perception</text><text class="t-sub" x="85" y="112" text-anchor="middle">face_cam, MediaPipe</text><text class="t-sub" x="85" y="130" text-anchor="middle">FaceTarget:</text><text class="t-sub" x="85" y="146" text-anchor="middle">world points</text></g>
           <g class="node n-perc"><rect x="195" y="60" width="130" height="110" rx="8"/><text class="t-title" x="260" y="92" text-anchor="middle">Percept</text><text class="t-sub" x="260" y="112" text-anchor="middle">face: eyes,</text><text class="t-sub" x="260" y="128" text-anchor="middle">mouth, distance,</text><text class="t-sub" x="260" y="144" text-anchor="middle">tilt; events</text></g>
           <g class="node n-app"><rect x="360" y="20" width="300" height="190" rx="10"/><text class="t-title" x="510" y="46" text-anchor="middle">Runner</text><text class="t-sub" x="510" y="64" text-anchor="middle">one owner per slot · live switch · glide</text></g>
           <g class="inner">
             <rect x="380" y="78" width="260" height="34" rx="4"/><text x="510" y="100" text-anchor="middle">gaze: SmoothFollow | CatGaze  [m]</text>
-            <rect x="380" y="120" width="260" height="34" rx="4"/><text x="510" y="142" text-anchor="middle">lean: KeepDistance</text>
+            <rect x="380" y="120" width="260" height="34" rx="4"/><text x="510" y="142" text-anchor="middle">approach: KeepDistance</text>
             <rect x="380" y="162" width="260" height="34" rx="4"/><text x="510" y="184" text-anchor="middle">tilt: MimicTilt</text>
           </g>
           <g class="node n-app"><rect x="695" y="80" width="110" height="70" rx="8"/><text class="t-title" x="750" y="110" text-anchor="middle">Robot</text><text class="t-sub" x="750" y="128" text-anchor="middle">client</text></g>
-          <g class="node n-d"><rect x="840" y="60" width="130" height="110" rx="8"/><text class="t-title" x="905" y="92" text-anchor="middle">gamerobotd</text><text class="t-sub" x="905" y="112" text-anchor="middle">look_at ± saccade</text><text class="t-sub" x="905" y="128" text-anchor="middle">lean, tilt</text><text class="t-sub" x="905" y="144" text-anchor="middle">Safety</text></g>
+          <g class="node n-d"><rect x="840" y="60" width="130" height="110" rx="8"/><text class="t-title" x="905" y="92" text-anchor="middle">gamerobotd</text><text class="t-sub" x="905" y="112" text-anchor="middle">look_at ± saccade</text><text class="t-sub" x="905" y="128" text-anchor="middle">approach, tilt</text><text class="t-sub" x="905" y="144" text-anchor="middle">Safety</text></g>
           <path class="edge e-perc" d="M160 115 H191" marker-end="url(#ah)"/>
           <path class="edge e-int" d="M325 115 H356" marker-end="url(#ah)"/>
           <path class="edge e-int" d="M660 115 H691" marker-end="url(#ah)"/>
@@ -380,13 +386,13 @@ flowchart TB
     <div class="pair">
       <figure>
         <div class="film"><video src="animations/AppTick.mp4" poster="animations/AppTick.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation of one app tick: a percept goes to each slot's owner, intents go to the daemon; then m switches the gaze slot to cat gaze with a glide"></video></div>
-        <figcaption>One app tick at 50 Hz, then <kbd>m</kbd>: the gaze slot passes to CatGaze with a half-second glide while lean and tilt carry on.</figcaption>
+        <figcaption>One app tick at 50 Hz, then <kbd>m</kbd>: the gaze slot passes to CatGaze with a half-second glide while approach and tilt carry on.</figcaption>
       </figure>
       <div class="notes">
         <dl>
-          <dt>slots</dt><dd>gaze, lean, tilt: one per motion primitive</dd>
+          <dt>slots</dt><dd>gaze, approach, tilt: one per motion primitive</dd>
           <dt>owners</dt><dd>one behaviour per slot; the first in the list that wants it</dd>
-          <dt>share</dt><dd>different slots run together: one looks, one leans</dd>
+          <dt>share</dt><dd>different slots run together: one looks, one keeps the distance</dd>
           <dt>replace</dt><dd>the same slot: <code>select</code> or <code>cycle</code> switches live</dd>
           <dt>drop</dt><dd>intents for slots a behaviour does not own are ignored</dd>
           <dt>handover</dt><dd>the new owner starts from the last target; 0.5 s glide, no saccades</dd>
@@ -402,7 +408,7 @@ flowchart TB
             <thead><tr><th>Behaviour</th><th>Slot</th><th>Sends</th></tr></thead>
             <tbody>
               <tr><td><code>SmoothFollow</code></td><td>gaze</td><td><code>look_at(face.eyes)</code> each tick; lost: ease home</td></tr>
-              <tr><td><code>KeepDistance</code></td><td>lean</td><td>1.5° per cm past 2 cm, ≤ 30°</td></tr>
+              <tr><td><code>KeepDistance</code></td><td>approach</td><td>gain × your distance change past 2 cm, in metres (LexJR 0.256, the rover 1.0)</td></tr>
               <tr><td><code>MimicTilt</code></td><td>tilt</td><td>your tilt, mirrored, past 3°, ≤ 20°</td></tr>
             </tbody>
           </table>
@@ -429,13 +435,13 @@ flowchart TB
         <p>Darts are saccades to an eye or the mouth with ±1.5° of scatter. <em>When</em> to jump is the behaviour's choice; the jump itself is the daemon's saccade. The attention cone is anchored on the face, so a dart to the mouth is not mistaken for you moving.</p>
       </article>
     </div>
-    <p class="prose">Switching between them: <kbd>m</kbd> calls <code>Runner.cycle("gaze")</code>. Cat gaze starts by staring where the robot already looks, so nothing moves until it decides to; going back, smooth follow glides to your face. Lean and tilt never stop.</p>
+    <p class="prose">Switching between them: <kbd>m</kbd> calls <code>Runner.cycle("gaze")</code>. Cat gaze starts by staring where the robot already looks, so nothing moves until it decides to; going back, smooth follow glides to your face. Approach and tilt never stop.</p>
   </section>
 
   <section id="behaviours">
     <div class="eyebrow"><span>Behaviours</span><span>compared</span></div>
     <h2>Two gaze behaviours, one face</h2>
-    <p class="prose">A motion primitive says how the body moves and lives in the tick: <code>look_at</code>, glide or saccade, <code>lean</code>, <code>tilt</code>. A behaviour decides what to do and when, from what the robot sees, and is a plugin. The Runner gives each slot to one behaviour and switches them live.</p>
+    <p class="prose">A motion primitive says how the body moves and lives in the tick: <code>look_at</code>, glide or saccade, <code>approach</code>, <code>tilt</code>. They say what to do, never how a body does it, so the same behaviours run on LexJR, the pan tilt and the rover. A behaviour decides what to do and when, from what the robot sees, and is a plugin. The Runner gives each slot to one behaviour and switches them live.</p>
     <div class="pair">
       <figure>
         <div class="film"><video src="animations/CatVsSmooth.mp4" poster="animations/CatVsSmooth.jpg" muted loop playsinline controls preload="metadata" aria-label="Animation comparing where smooth follow and cat gaze look as the same face drifts and jumps"></video></div>
@@ -446,14 +452,14 @@ flowchart TB
           <thead><tr><th>Slot</th><th>Behaviour</th><th>Sends</th></tr></thead>
           <tbody>
             <tr><td>gaze</td><td><code>SmoothFollow</code> or <code>CatGaze</code>, switched with <kbd>m</kbd></td><td><code>robot.look_at</code></td></tr>
-            <tr><td>lean</td><td><code>KeepDistance</code></td><td><code>robot.lean</code></td></tr>
+            <tr><td>approach</td><td><code>KeepDistance</code></td><td><code>robot.approach</code></td></tr>
             <tr><td>tilt</td><td><code>MimicTilt</code></td><td><code>robot.tilt</code></td></tr>
           </tbody>
         </table>
       </div>
     </div>
     <p class="prose">Switching gaze glides between the two behaviours' targets for half a second, with saccades held back, so the robot never snaps. Whatever a behaviour sends, the daemon's Safety still clamps.</p>
-    <p class="prose">Tried live with the webcam: the cat found the face in a quarter second and cycled through track, dart and stare for nearly seven minutes, with lean and tilt alongside. Quit other camera apps first; with OBS open, the webcam gave almost no frames.</p>
+    <p class="prose">Tried live with the webcam: the cat found the face in a quarter second and cycled through track, dart and stare for nearly seven minutes, with the lean (now the approach) and tilt alongside. Quit other camera apps first; with OBS open, the webcam gave almost no frames.</p>
   </section>
 
   <section id="golden">
@@ -471,6 +477,8 @@ flowchart TB
             <tr><td>eye, gaze, Jacobian</td><td class="num">500</td><td class="num">2.4e-15</td></tr>
             <tr><td>aim solver, with roll targets</td><td class="num">300</td><td class="num">3.9e-11 rad</td></tr>
             <tr><td>MotionCore replays, incl. tilt, saccades</td><td class="num">4,850 ticks</td><td class="num">2.0e-11 rad</td></tr>
+            <tr><td>the pan tilt: eye, aim, MotionCore (native)</td><td class="num">500 / 300 / 4,850</td><td class="num">9.7e-16 / 2.5e-10 / 9.2e-12 rad</td></tr>
+            <tr><td>the rover: eye, aim, MotionCore (native)</td><td class="num">500 / 300 / 4,850</td><td class="num">4.4e-16 / 1.8e-15 / 7.9e-13</td></tr>
             <tr><td>through Controller + Safety</td><td class="num">750 ticks</td><td class="num">2.0e-11 rad</td></tr>
             <tr><td>one servo tick, for scale</td><td class="num">—</td><td class="num">1.5e-3 rad</td></tr>
           </tbody>
@@ -492,7 +500,7 @@ flowchart TB
 ../gamerobotics/target/release/gamerobotd --io sim
 .venv-cam/bin/python face_cam.py
 .venv-bam/bin/python face_follow.py</pre>
-        <p>It looks at you, leans to keep its distance, and mirrors the tilt of your head. Press <kbd>]</kbd> in the viewer for the side view, and <kbd>c</kbd> in the camera preview to set your normal distance.</p>
+        <p>It looks at you, leans to keep its distance, and mirrors the tilt of your head (<code>gamerobotics play lexjr</code> does all four; <code>play rover</code> drives the rover instead). Press <kbd>]</kbd> in the viewer for the side view, and <kbd>c</kbd> in the camera preview to set your normal distance.</p>
       </article>
       <article class="case">
         <div class="who">Bench</div>
@@ -527,7 +535,7 @@ max_speed_dps = 183.33333333333334
 [motion]
 chain = <span class="s">"lexjr.chain.json"</span>
 config = <span class="s">"lexjr.motion.json"</span></pre>
-        <p>A robot file and a <code>RobotIo</code> backend. The daemon, API and apps stay as they are.</p>
+        <p>A robot file and a <code>RobotIo</code> backend. The daemon, API and apps stay as they are. A wheeled robot adds <code>mode = "velocity"</code> joints and a <code>[base]</code>.</p>
       </article>
     </div>
   </section>
@@ -544,6 +552,8 @@ config = <span class="s">"lexjr.motion.json"</span></pre>
       <li>Intents while disabled are dropped, never replayed.</li>
       <li>The robot file's limits are never tighter than the motion's.</li>
       <li>The Rust motion matches its Python reference to 1e-9 rad.</li>
+      <li>Wheels stand still unless asked: enabling and leaving gaze mode stop them; a non-finite wheel target is 0.</li>
+      <li>A quiet controller stops the wheels: the body stops one 0.1 s after its last target.</li>
     </ol>
   </section>
 
@@ -560,6 +570,8 @@ config = <span class="s">"lexjr.motion.json"</span></pre>
       <div><time>2026-10-19</time><p><b>Simulator timeout 2 s,</b> not 200 ms: a slow simulator is still alive.</p></div>
       <div><time>2026-10-19</time><p><b>Saccades as a motion primitive,</b> from the head's present velocity; when to jump is a behaviour's choice.</p></div>
       <div><time>2026-10-19</time><p><b>Behaviours as plugins:</b> a Python SDK and a Runner with one owner per slot and live, gliding switches. Cat gaze is the second gaze behaviour.</p></div>
+      <div><time>2026-10-20</time><p><b>A second robot, files only.</b> The Pan Tilt Robot Test (two of LexJR's servos, a new base plate and camera yoke) runs on the same daemon, solver and behaviours. No daemon or solver code changed; lexjr-sim's robot file gained <code>[robot]</code>, and projects gained <code>[env]</code>.</p></div>
+      <div><time>2026-10-21</time><p><b>A third robot, a rover, and a body-neutral API.</b> Two servos in wheel mode and a camera, on the same daemon and behaviours. The user chose <code>robot.approach</code> in metres (replacing <code>robot.lean</code>), the base's pose in the gaze chain with a diff drive in the daemon, and unlimited travel. Joints gained modes; the body protocol is v2.</p></div>
       <div><time>2026-10-19</time><p><b>Mimic head tilt,</b> a third behaviour on the same camera: the solver's horizon task takes a roll target, so the head tilts while its gaze stays on you. Mirrored, as on a call.</p></div>
     </div>
   </section>
@@ -572,10 +584,12 @@ config = <span class="s">"lexjr.motion.json"</span></pre>
         <thead><tr><th>Feature</th><th>Status</th></tr></thead>
         <tbody>
           <tr><td>Daemon, API, CLI, Safety, simulator link</td><td><span class="status st-ship">shipped</span></td></tr>
-          <tr><td>Gaze and lean in the tick, both kinematics backends</td><td><span class="status st-ship">shipped</span></td></tr>
+          <tr><td>Gaze and approach in the tick, both kinematics backends</td><td><span class="status st-ship">shipped</span></td></tr>
           <tr><td>Face follow with webcam, face drawn in the viewer</td><td><span class="status st-ship">shipped</span></td></tr>
           <tr><td>Mimic head tilt (<code>robot.tilt</code>)</td><td><span class="status st-ship">shipped</span></td></tr>
           <tr><td>Saccades; behaviour SDK and Runner; cat gaze</td><td><span class="status st-ship">shipped</span></td></tr>
+          <tr><td>A second robot (Pan Tilt Robot Test) on the same daemon and behaviours</td><td><span class="status st-ship">shipped</span></td></tr>
+          <tr><td>A mobile robot (Rover Robot Test): wheels, a diff drive, <code>robot.approach</code></td><td><span class="status st-ship">shipped</span></td></tr>
           <tr><td>Behaviour scaffold, replay testing, percept service</td><td><span class="status st-plan">planned</span></td></tr>
           <tr><td>FeetechIo: real servos over rustypot</td><td><span class="status st-plan">planned</span></td></tr>
           <tr><td>ONNX policy runner; load microduck policies</td><td><span class="status st-plan">planned</span></td></tr>

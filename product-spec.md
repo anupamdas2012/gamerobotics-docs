@@ -35,7 +35,7 @@ drive v1 decisions.
 1. **Time to first wiggle under 10 minutes.** From install to a robot moving on screen and
    reacting to you, with one command and no hardware.
 2. **One project, sim and real the same.** Deploying to a robot is a target switch, not a port.
-3. **Everything live.** Tune a spring, a cat's reaction time or a lean gain while it runs; save
+3. **Everything live.** Tune a spring, a cat's reaction time or a keep-distance gain while it runs; save
    when it feels right.
 4. **Safe by construction.** Nothing a creator writes can hurt the robot or a person: the
    daemon's Safety applies to everything.
@@ -59,7 +59,7 @@ The order is real: each builds on the last.
    start together. A robot on screen looks at you within seconds.
 2. **Shape.** Open the studio. Pick a personality preset (Curious Cat, Shy Puppy, Attentive Owl),
    then tune it with sliders. Save it as your own.
-3. **Compose.** Choose which behaviour runs in each slot (gaze, lean, tilt...). Add one from a
+3. **Compose.** Choose which behaviour runs in each slot (gaze, approach, tilt...). Add one from a
    file, or write one in Python.
 4. **Build.** Start something new from a kit of parts. Pick an archetype (a personality head, a
    balancing robot, a legged robot, a mobile robot), then assemble it by describing it to an LLM
@@ -77,10 +77,10 @@ The order is real: each builds on the last.
 | **Kit** | the set of catalogue parts a creator builds from | not built |
 | **Archetype** | a kind of robot to start from: its typical structure, required parts and capabilities, and the motion it needs (e.g. balancing needs an IMU and a balance controller) | not built |
 | **Robot** | an assembly of parts with joints, a kinematic chain and capabilities | LexJR, described across two files |
-| **Capability** | something a robot can do: `gaze`, `lean`, `tilt`, `antennas`, `locomotion` | implicit: MotionCore assumes LexJR's head |
-| **Primitive** | how a capability moves, in the daemon's tick: `look_at` (± saccade), `lean`, `tilt` | built |
+| **Capability** | something a robot can do: `gaze`, `approach`, `tilt`, `antennas`, `locomotion` | implicit in the robot files: a neck, a pan tilt or a wheeled base all give `gaze` and `approach` (LexJR, the pan tilt, the rover) |
+| **Primitive** | how a capability moves, in the daemon's tick: `look_at` (± saccade), `approach` (metres: a lean, or a drive), `tilt` | built |
 | **Behaviour** | decides what to do from what the robot sees; needs capabilities; owns slots | built: SmoothFollow, CatGaze, KeepDistance, MimicTilt |
-| **Personality** | a named set of behaviour parameters (and slot choices) | `[cat_gaze]`, `[lean]`, `[tilt]` in TOML |
+| **Personality** | a named set of behaviour parameters (and slot choices) | `[cat_gaze]`, `[keep_distance]`, `[tilt]` in TOML, in units that are the behaviour's, not a body's |
 | **Project** | a robot + its behaviours + personalities, runnable in sim or on hardware | face_follow.py plus config |
 | **Target** | where a project runs: the sim, our robot, or another platform through an adapter | sim and fake built; hardware next |
 
@@ -155,10 +155,10 @@ it needs to work. Choosing one sets up the builder; the creator decides the rest
 
 | archetype | typical structure | needs from the kit | capabilities | motion it needs | engine today |
 |---|---|---|---|---|---|
-| **Personality head** | 2–6 joints aiming a camera (pan-tilt to LexJR) | servos, webcam | gaze, lean, tilt | MotionCore (built) | **runs** |
+| **Personality head** | 2–6 joints aiming a camera (pan-tilt to LexJR) | servos, webcam | gaze, approach, tilt | MotionCore (built) | **runs** |
 | **Balancing robot** | two wheels under a body, maybe a head | 2 servos in wheel mode, IMU, webcam optional | balance, drive, gaze | a balance controller or policy | not yet |
 | **Legged robot** | 2 or 4 legs, 2–3 joints each, body, head | 6–12 servos, IMU | locomotion, gaze | an RL policy (microduck-style) | not yet |
-| **Mobile robot** | wheels on a base, a sensor mast | 2–4 servos in wheel mode, webcam | drive, gaze | a drive primitive | not yet |
+| **Mobile robot** | wheels on a base, a sensor mast | 2–4 servos in wheel mode, webcam | gaze, approach, later drive | the base's pose in the gaze chain, a diff drive in the daemon (built); a `drive` primitive for going places | **runs** (the rover, in sim): it turns to look and drives to keep its distance |
 | **Arm** | a chain of joints, a camera or gripper at the end | 4–6 servos, webcam | gaze, reach | MotionCore's IK, then reach | gaze runs; reach not yet |
 
 Each new archetype adds what its motion needs to the engine once: a `balance` primitive, a
@@ -202,11 +202,11 @@ Behaviours must run on every robot that has the capabilities they need, unchange
 
 | robot | parts | capabilities | status |
 |---|---|---|---|
-| pan-tilt head (personality) | 2 × STS3215, webcam | gaze (2 joints) | to build (sim first) |
-| LexJR (personality) | 6 × STS3215, spur 3:1, webcam | gaze, lean, tilt | built (sim) |
+| pan-tilt head (personality) | 2 × HD-1910, LexJR's bracket and camera | gaze (2 joints) | built (sim), 2026-10-20 |
+| LexJR (personality) | 6 × STS3215, spur 3:1, webcam | gaze, approach, tilt | built (sim) |
 | two-wheel balancer (balancing) | 2 × STS3215 in wheel mode, IMU, a pan-tilt head | balance, drive, gaze | to build (sim first) |
 | small quadruped (legged) | 8–12 × STS3215, IMU | locomotion, gaze | later |
-| desk rover (mobile) | 2 × STS3215 in wheel mode, webcam mast | drive, gaze | later |
+| desk rover (mobile) | 2 × HD-1910 in wheel mode, LexJR's camera | gaze, approach (turning and driving) | built (sim), 2026-10-21 |
 | arm (SO-100 class) | 6 × STS3215, wrist camera | gaze, later reach | later |
 | Reachy Mini | imported model | gaze, tilt, antennas | integration |
 | microduck | imported model, XL330 | gaze (head), locomotion | integration |
@@ -267,8 +267,8 @@ Proposed presets, to tune by feel:
 | preset | gaze | feel | settings (from today's defaults) |
 |---|---|---|---|
 | **Curious Cat** | CatGaze | quick, jumpy, lots of darts | react 0.10–0.30 s, cone 5°, darts every 0.25–0.6 s, tilt gain 1.0 |
-| **Shy Puppy** | CatGaze | slow to look, glances away, keeps its distance | react 0.4–0.8 s, cone 12°, long stares, lean gain 2.0 (leans back more), tilt gain 1.2 |
-| **Attentive Owl** | SmoothFollow | calm, steady, follows closely | smooth follow, tilt gain 0.5, lean gain 1.0 |
+| **Shy Puppy** | CatGaze | slow to look, glances away, keeps its distance | react 0.4–0.8 s, cone 12°, long stares, keep-distance gain 0.342 (backs off more), tilt gain 1.2 |
+| **Attentive Owl** | SmoothFollow | calm, steady, follows closely | smooth follow, tilt gain 0.5, keep-distance gain 0.171 |
 
 ## Success measures
 

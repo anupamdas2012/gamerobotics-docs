@@ -1,6 +1,6 @@
 # gameRobotics architecture
 
-Status: current as of 2026-10-20 (gamerobotics `f642db1`, lexjr-sim `c8a0fc0`).
+Status: current as of 2026-10-21 (gamerobotics `74cdace`, lexjr-sim `db5ca29`).
 What the system does, feature by feature, is in [spec.md](spec.md); how an app and its
 behaviours are built is in [app-architecture.md](app-architecture.md); what we're building on the
 engine, and for whom, is in [product-spec.md](product-spec.md). The illustrated version, with
@@ -10,8 +10,9 @@ animations, is [architecture.html](architecture.html). All three are kept curren
 ## Goal
 
 One robot daemon for every gameRobotics robot, built so a learned (RL) policy behaves on the
-robot as it did in simulation. The first robot is LexJR, a six-joint desk robot with a head; the
-next is a legged robot. Latency and determinism decide the design: everything that closes a
+robot as it did in simulation. The first robot is LexJR, a six-joint desk robot with a head; two
+more run on the same daemon already (a pan tilt, and a two-wheeled rover); the next is a legged
+robot. Latency and determinism decide the design: everything that closes a
 control loop runs inside one 50 Hz tick, in one process, on the measurements that tick just took.
 
 ## Architecture overview
@@ -44,6 +45,7 @@ flowchart TB
         API["JSON-RPC API<br/>unix socket"]
         WS["WebSocket API (A0)"]
         LOOP["Control loop<br/>Controller, MotionCore, Safety"]
+        DRIVE["Diff drive<br/>odometry, wheel speeds"]
         PUB["Publisher (A0)<br/>state, jitter histogram"]
         IO["RobotIo<br/>FakeIo, RemoteIo, FeetechIo (H0)"]
     end
@@ -69,7 +71,8 @@ flowchart TB
     WS --> LOOP
     LOOP --> PUB
     LOOP --> IO
-    IO <-->|TCP 7600, body protocol, 1/tick| BODY
+    LOOP <-->|base pose, wheel speeds| DRIVE
+    IO <-->|TCP 7600, body protocol v2, 1/tick| BODY
     IO <-->|serial 1 Mbit/s| SERVOS
     BODY --> VIEW
     RUNNER -.->|UDP 7610, viz| VIEW
@@ -98,7 +101,7 @@ the same dashboard can later point at a robot with its own Pi. A narrated video 
 | `gamerobotd` | gamerobotics | Rust | the robot: the control loop, safety, motion, the hardware link |
 | `gamerobotics` (`bin/`, `python/gamerobotics/play.py`) | gamerobotics | Python | nothing of the robot: starts a project's processes in order, watches their health, stops them together |
 | `gamerobotctl` | gamerobotics | Rust | nothing: a command line over the API |
-| `body_server.py` | lexjr-sim | Python | LexJR's simulated body: MuJoCo + BAM servo models, the viewer |
+| `body_server.py` | lexjr-sim | Python | the robot's simulated body (LexJR, or the robot `LEXJR_ROBOT` names): MuJoCo + BAM servo models, the viewer |
 | `face_cam.py` | lexjr-sim | Python | the webcam and face perception (MediaPipe); pixels never leave it |
 | `face_follow.py` | lexjr-sim | Python | a behaviour Runner: LexJR's behaviours (smooth follow or cat gaze, keep distance, mimic tilt) turn faces into intents |
 
@@ -106,22 +109,28 @@ the same dashboard can later point at a robot with its own Pi. A narrated video 
 
 ```text
  Perception (face_cam) ─► Percept ─► Runner ─┬─ gaze: SmoothFollow | CatGaze  ─┐
-                                             ├─ lean: KeepDistance             ├─► intents ─► gamerobotd
+                                             ├─ approach: KeepDistance         ├─► intents ─► gamerobotd
                                              └─ tilt: MimicTilt                ─┘
 ```
 
 The rule that splits the work: **the daemon has motion primitives, the app has behaviours.** A
 primitive says how the body moves and needs the tick's timing to look right (`look_at` with or
-without a saccade, `lean`, `tilt`); it knows nothing about faces or moods. A behaviour decides
+without a saccade, `approach`, `tilt`); it knows nothing about faces or moods. A behaviour decides
 what to do and when, from what the robot sees, and is a plugin.
+
+**Intents are body-neutral.** They say what to do, never how a body does it: `look_at` is a world
+point, `approach` metres toward it. LexJR reaches them with its neck and a lean, the pan tilt with
+two servos, the rover by turning and driving. So a behaviour, and a personality's numbers, run
+unchanged on all three; how a body does it is its robot file's business (`[approach]` in lexjr-sim,
+`[base]` in the daemon's).
 
 - **The SDK** is `gamerobotics/python` (package `gamerobotics`): the client, and `Behaviour`,
   `Intent`, `Percept`, `Runner`. It is what a third party writes against.
-- **Slots** (`gaze`, `lean`, `tilt`) each have one owning behaviour at a time; switching is live
+- **Slots** (`gaze`, `approach`, `tilt`) each have one owning behaviour at a time; switching is live
   (`select`, `cycle`). Behaviours that want different slots run together; ones that want the
   same slot replace each other.
 - **Handover:** the gaze changing hands is a minimum-jerk glide between the two behaviours'
-  targets over 0.5 s, saccades held back. Lean and tilt need none; the daemon eases them.
+  targets over 0.5 s, saccades held back. Approach and tilt need none; the daemon eases them.
 - **Safety stays in the daemon:** whatever a behaviour sends, Safety still clamps it, so a
   third-party behaviour cannot exceed the robot's limits.
 
@@ -133,7 +142,7 @@ The layers inside an app, the slot rules, and face follow and cat gaze as worked
 ```text
  gr-proto     the API types: methods, params, state; units and conventions, written once
  gamerobotd   the loop thread + the socket server (a thread per connection)
- gr-control   Model (the robot file) · Controller::tick · Safety · RobotIo (FakeIo, RemoteIo)
+ gr-control   Model (the robot file) · Controller::tick · DiffDrive (a mobile base) · Safety · RobotIo (FakeIo, RemoteIo)
  gr-motion    Kinematics (Chain | MujocoKinematics) · aim (the gaze solver) · MotionCore
 ```
 
@@ -147,9 +156,12 @@ Every 20 ms (the robot file's `control_hz`):
 1. **Read** every joint (and the IMU, where there is one) in one transaction.
 2. **Apply** the client messages that arrived since the last tick, in order, without blocking.
 3. **Decide** the goals: in joints mode, where `robot.joints` put them; in gaze mode, MotionCore
-   ticks on the positions just read.
+   ticks on the positions just read. On a mobile robot, the diff drive first updates the base's
+   pose from the wheels just read (odometry), and turns the pose MotionCore asks for into wheel
+   speeds.
 4. **Safety** checks every target (finite), clamps it to the joint's limits and to its speed from
-   the last command, and is the only code that can write.
+   the last command (a wheel's speed to its top speed and acceleration), and is the only code that
+   can write.
 5. **Write** the goals; **publish** state to subscribers, dropping frames for one that lags.
 
 Measured on an Intel MacBook against the LexJR simulator: about 3 ms of the 20 ms, nearly all of
@@ -174,6 +186,12 @@ These hold everywhere and are tested:
 7. **The robot file's limits are never tighter than the motion's.** Otherwise Safety would
    reshape the motion without anyone noticing (it happened twice, by rounding).
 8. **The Rust motion matches its Python reference 1:1**, held by golden tests from MuJoCo.
+9. **Wheels stand still unless something asks them to turn.** Enabling, and leaving gaze mode,
+   set every wheel's goal to 0, and a non-finite wheel target is 0, not the last speed (tests:
+   gr-control `tests/rover.rs`, `safety.rs`).
+10. **A quiet controller stops the wheels.** The body stops a wheel whose target is 0.1 s old,
+    and every wheel on torque off (body protocol v2; test: lexjr-sim `tests/test_robots.py`). On
+    hardware the bus driver must do the same: the servo has no watchdog.
 
 ## The connection rule
 
@@ -196,7 +214,7 @@ There are two seams, each a trait with interchangeable implementations.
 
 **`RobotIo`** (`gr-control/src/io.rs`) is the hardware. `read`, `write(targets)`, `set_torque`.
 - `FakeIo`: tracks perfectly, for tests and `--io fake`.
-- `RemoteIo`: a simulator over TCP (body protocol v1, below).
+- `RemoteIo`: a simulator over TCP (body protocol v2, below).
 - `FeetechIo`: Feetech servos over rustypot. Not written yet.
 
 **`Kinematics`** (`gr-motion/src/kin.rs`) is where the eye is and how the head turns. `set(q)`,
@@ -204,12 +222,17 @@ There are two seams, each a trait with interchangeable implementations.
 - `Chain`: native, a product of exponentials over a table exported from the robot's MJCF (the default).
 - `MujocoKinematics`: MuJoCo itself through mujoco-rs, the fallback (`--features mujoco`, `--kinematics mujoco`).
 
+**A mobile base** is not a third seam but part of the chain: its pose (`base_x`, `base_y`,
+`base_yaw`) leads the gaze chain, so MotionCore aims and approaches with it as with any joint, and
+`gr-control/src/base.rs` (`DiffDrive`) is the only code that knows it is two wheels: odometry in,
+wheel speeds out.
+
 ## Interfaces between processes
 
 | link | transport | format | rate |
 |---|---|---|---|
 | app ↔ gamerobotd | unix socket (`/tmp/gamerobotd.sock`, `GAMEROBOTD_SOCKET`) | JSON-RPC 2.0, one object per line | intents up to the loop rate |
-| gamerobotd ↔ simulator | TCP `127.0.0.1:7600`, `TCP_NODELAY` | body protocol v1, one JSON object per line | one read (+ one write when enabled) per tick |
+| gamerobotd ↔ simulator | TCP `127.0.0.1:7600`, `TCP_NODELAY` | body protocol v2 (joint modes in the hello), one JSON object per line | one read (+ one write when enabled) per tick |
 | face_cam → app | UDP `127.0.0.1:5005` | JSON: face box and 160 landmarks (~3.7 kB) | camera rate, ~30/s |
 | app → simulator viewer | UDP `127.0.0.1:7610` | JSON: gaze target and face mesh | app rate; visualization only |
 
@@ -244,6 +267,8 @@ but never changes its result. The daemon gives it 2 s to answer before reconnect
 | 2026-10-20 | **Every client talks to an API by address, never depending on running locally**; the CLI first, then a Tauri dashboard (Reachy Mini's shape) | going from LexJR on the Mac to a Pi walker should be a new address, not a rewrite |
 | 2026-10-20 | Tethered over USB first, the laptop running everything (Reachy Mini Lite's model); platform packaging parked until hardware bring-up | no real robot has been tested yet; packaging choices should follow measured behaviour |
 | 2026-10-20 | A project file and one command, `gamerobotics play`, that supervises the processes and reports health in plain words (M0) | four terminals and three environments were the first thing a new user would meet; the camera clash and throttling were silent |
+| 2026-10-20 | The user's experiment: a second robot from the same hardware, the Pan Tilt Robot Test (two servos, a new base plate and camera yoke), on the same daemon, solver and behaviours, with only robot files different. Result: it holds. No daemon or solver code changed. What it took: lexjr-sim's robot file gains `[robot]` and `LEXJR_ROBOT` picks it; the Python MotionCore runs with no body joints or `[lean]`; `project.toml` gains `[env]`; the golden tests cover both robots. What is still LexJR-only is in spec.md §10 | test the claim that a robot is a file, before building more robots on it; the pan tilt passes `scripts/trial.py` with SmoothFollow and CatGaze, and LexJR is unchanged (its goldens export byte-identical) |
+| 2026-10-21 | The user's third robot: a two-wheeled rover (two servos in wheel mode and a camera), on the same daemon, solver and behaviours, to harden the API for any body. The user chose: **`robot.approach` in metres** toward what the robot looks at, replacing `robot.lean` (rad of a lean joint); **the base in the gaze chain** (its pose as joints MotionCore moves, a diff drive in the daemon turning that into wheel speeds), not a separate drive intent; **unlimited travel**. Also: joints get a mode (position, velocity); body protocol v2; `[lean]` splits into `[keep_distance]` (the behaviour, robot-neutral gain) and `[approach]` (the body). On a base, approaching means changing the eye's distance to the target along its line of sight, and aims are from the base's measured position: a diff drive cannot step sideways | the behaviours must not know the body; a robot-neutral unit lets one behaviour and one personality run on a neck or on wheels; with the base in the chain, gaze on a rover is the same solve as on LexJR. LexJR's joints move as before (8e-15 rad); the rover passes `scripts/trial.py` (approach within 1 mm, odometry 0.7 mm off after 2.6 m) |
 | 2026-10-19 | Mimic head tilt as a third behaviour on the same camera: `robot.tilt`, the solver's horizon task given a roll target, in the tick; mirrored by default | the user asked for it; a roll target keeps the gaze on you while tilting, and mirroring reads as copying on a call |
 
 ## Borrowed code
@@ -261,5 +286,6 @@ IMU. See [THIRD_PARTY.md](../THIRD_PARTY.md).
 - `FeetechIo` (real servos, over rustypot).
 - An ONNX policy runner, with an observation builder driven by a layout in the robot file.
 - The Reachy Mini bridge.
-- Torque off in the simulator (its servos keep holding).
+- Torque off in the simulator (its position servos keep holding; wheels stop).
+- A wheel-mode driver on hardware, with its own watchdog (the servo has none).
 - A remote for the gamerobotics repo.
