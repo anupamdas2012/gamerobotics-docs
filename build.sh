@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 ROOT=$PWD
 OUT=$ROOT/docs/animations
 MEDIA=$(mktemp -d)
-SCENES=${*:-TickLoop Pipeline StaggeredGaze GoldenHarness CatVsSmooth AppTick FirstWiggle PartsToRobot CapabilityMatch Personalities KitBuild ArchitectureTour BehaviourTour}
+SCENES=${*:-TickLoop Pipeline StaggeredGaze GoldenHarness CatVsSmooth AppTick FirstWiggle PartsToRobot CapabilityMatch Personalities KitBuild IdeaToRobot ArchitectureTour BehaviourTour}
 [ -x .venv-docs/bin/manim ] || { echo "no .venv-docs: see the comment at the top of this file" >&2; exit 1; }
 cd "$OUT"
 for s in $SCENES; do

@@ -3,7 +3,7 @@
 The engine as built, exactly. What we're building on it, and for whom, is the product spec,
 [product-spec.md](product-spec.md).
 
-Status: current as of 2026-10-22 (gamerobotics `5c506b7`, lexjr-sim `4b57cbf`).
+Status: current as of 2026-10-22 (gamerobotics `8d3a51d`, lexjr-sim `4b57cbf`).
 What exists today and exactly how it behaves. How it is put together is in
 [architecture.md](architecture.md). Kept current by the `update-docs` skill.
 
@@ -574,11 +574,16 @@ yuv420p). It is a separate process, reached by an address.
   `--fit-window` s smoothed both ways in time. The same states give the same video.
 - **`play --record`** (branch `face-sim`) runs it alongside a project.
 
-**`scripts/showreel.py`** makes `docs/recordings/one-face-four-robots.mp4` (2:07, 2026-10-22):
-the first face capture (§8b) played to LexJR, the pan tilt, the rover and the rover pan tilt,
-each filmed with the fit camera, captioned, with an explainer inset, a grid of all four at the
-same moment, and narration from `docs/recordings/showreel.json`, voiced with ElevenLabs (never
-a stand-in voice). Every video under `docs/` is on `media.html`; the simulation recordings are
+**`scripts/showreel.py`** makes `docs/recordings/one-face-four-robots.mp4` (1:40, 2026-10-22):
+the platform in one pass (the `IdeaToRobot` scene, each stage tagged with what exists), then
+one character (the curious-cat personality, from the first face capture, §8b) on LexJR, the pan
+tilt, the rover and the rover pan tilt, the separation of brain and body as the thread. Each is
+filmed with the fit camera, captioned, with an explainer inset, then a grid of all four at the
+same moment. Narration from `docs/recordings/showreel.json`, ElevenLabs only (never a stand-in
+voice): `voice` saves after every clip, and `build` refuses narration that doesn't match the
+words. In the published cut the last three segments (the rover pan tilt, the grid, the close)
+still carry their earlier narration: the free plan's 10,000 characters ran out with 491 to go,
+and the newer words are in `showreel.json` for when there are credits. Every video under `docs/` is on `media.html`; the simulation recordings are
 listed in `docs/recordings/recordings.json`.
 
 ## 9. Verification (shipped)

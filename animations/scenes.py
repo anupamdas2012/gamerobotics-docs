@@ -14,7 +14,7 @@ import numpy as np
 from manim import (DOWN, DR, LEFT, RIGHT, UP, UL, UR, Arrow, Circle, Create, DashedLine, DashedVMobject, Dot,
                    DoubleArrow, FadeIn, GrowArrow, Indicate, Rotate,
                    FadeOut, Line, MoveAlongPath, Rectangle, RoundedRectangle, Scene, Text, Transform,
-                   ValueTracker, VGroup, always_redraw, config, linear, rate_functions)
+                   ValueTracker, VGroup, VMobject, always_redraw, config, linear, rate_functions)
 
 # The palette the HTML uses for its dark panels: slate ground, sensor teal, intent amber,
 # safety coral, bone text.
@@ -676,6 +676,121 @@ class KitBuild(Scene):
         note.move_to([0, tray_y + 0.05, 0])
         self.play(FadeIn(note))
         self.wait(2)
+
+
+class IdeaToRobot(Scene):
+    """The platform in one pass, for the showreel's intro and the product page: design a robot,
+    simulate it, train its behaviours, deploy them to hardware, and round again. Each stage is tagged
+    with what exists: designing is CAD today (in the platform next), simulating is built, training
+    and deploying to real servos are next. The bottom of the frame is left clear for a caption."""
+
+    def construct(self):
+        title = label("From idea to working robot", 36, INK, weight="BOLD").move_to([0, 3.25, 0])
+        sub = label("easier to build, faster to iterate on", 20, DIM).next_to(title, DOWN, buff=0.15)
+        self.play(FadeIn(title), FadeIn(sub), run_time=1.0)
+        self.wait(0.8)
+
+        xs, y0, pw, ph = [-4.95, -1.65, 1.65, 4.95], 0.35, 2.8, 3.3
+        stages = [("Design", "visually", TEAL, "CAD today", False), ("Simulate", "and test", TEAL, "today", False),
+                  ("Train", "behaviours", AMBER, "next", True), ("Deploy", "to real hardware", CORAL, "next", True)]
+        panels = []
+        for x, (name, what, color, tag, planned) in zip(xs, stages):
+            r = RoundedRectangle(width=pw, height=ph, corner_radius=0.14, stroke_color=color, stroke_width=2.2,
+                                 fill_color=color, fill_opacity=0.0 if planned else 0.05).move_to([x, y0, 0])
+            if planned:
+                r = DashedVMobject(r, num_dashes=44, dashed_ratio=0.55)
+            t = label(name, 24, INK, weight="BOLD").move_to([x, y0 + ph / 2 - 0.38, 0])
+            w = label(what, 15, DIM).next_to(t, DOWN, buff=0.06)
+            pill = RoundedRectangle(width=0.32 + 0.11 * len(tag), height=0.32, corner_radius=0.16, stroke_width=1.4,
+                                    stroke_color=TEAL if not planned else DIM, fill_color=TEAL if not planned else BG,
+                                    fill_opacity=0.18 if not planned else 0.0).move_to([x, y0 - ph / 2 + 0.32, 0])
+            pt = label(tag, 13, TEAL if not planned else DIM, MONO).move_to(pill)
+            panels.append(VGroup(r, t, w, pill, pt))
+        arrows = [Arrow([xs[k] + pw / 2 + 0.04, y0, 0], [xs[k + 1] - pw / 2 - 0.04, y0, 0], buff=0, stroke_width=2.4,
+                        color=DIM, tip_length=0.14, max_tip_length_to_length_ratio=0.5) for k in range(3)]
+
+        # Design: parts come together into a robot.
+        cx, cy = xs[0], y0 - 0.25
+        base = RoundedRectangle(width=1.1, height=0.32, corner_radius=0.08, stroke_color=INK, stroke_width=2,
+                                fill_color=GRID, fill_opacity=1).move_to([cx, cy - 0.55, 0])
+        servo = Rectangle(width=0.42, height=0.62, stroke_color=TEAL, stroke_width=2, fill_color=GRID,
+                          fill_opacity=1).move_to([cx, cy - 0.08, 0])
+        head = RoundedRectangle(width=0.82, height=0.5, corner_radius=0.1, stroke_color=INK, stroke_width=2,
+                                fill_color=GRID, fill_opacity=1).move_to([cx, cy + 0.48, 0])
+        lens = Circle(radius=0.12, stroke_color=AMBER, stroke_width=2.5).move_to([cx + 0.2, cy + 0.48, 0])
+        robot = VGroup(base, servo, head, lens)
+        starts = [[-1.1, -0.6], [1.0, -0.2], [-0.9, 0.9], [1.1, 0.95]]
+        for part, (dx, dy) in zip(robot, starts):
+            part.shift([dx * 0.55, dy * 0.45, 0])
+        self.play(FadeIn(panels[0]), run_time=0.6)
+        self.play(*[FadeIn(pt) for pt in robot], run_time=0.4)
+        self.play(*[pt.animate.shift([-dx * 0.55, -dy * 0.45, 0]) for pt, (dx, dy) in zip(robot, starts)],
+                  run_time=1.1, rate_func=rate_functions.ease_out_back)
+
+        # Simulate: on a floor, its line of sight follows a moving face.
+        sx, sy = xs[1], y0 - 0.2
+        floor = VGroup(*[Line([sx - 1.25, sy - 0.75 + 0.22 * k, 0], [sx + 1.25, sy - 0.75 + 0.22 * k, 0], stroke_width=1,
+                              color=GRID) for k in range(5)],
+                       *[Line([sx - 1.25 + 0.5 * k, sy - 0.75, 0], [sx - 1.25 + 0.5 * k, sy + 0.13, 0], stroke_width=1,
+                              color=GRID) for k in range(6)])
+        bot = robot.copy().scale(0.62).move_to([sx - 0.55, sy - 0.2, 0])
+        eye = bot[3].get_center()
+        tt = ValueTracker(0.0)
+        face = always_redraw(lambda: Circle(radius=0.16, stroke_color=TEAL, stroke_width=2.5).move_to(
+            [sx + 0.65 + 0.35 * math.cos(tt.get_value()), sy + 0.45 + 0.3 * math.sin(1.7 * tt.get_value()), 0]))
+        gaze = always_redraw(lambda: Line(eye, face.get_center(), stroke_width=2.5, color=AMBER))
+        self.play(GrowArrow(arrows[0]), FadeIn(panels[1]), run_time=0.6)
+        self.play(FadeIn(floor), FadeIn(bot), FadeIn(face), Create(gaze), run_time=0.5)
+        self.play(tt.animate.set_value(2 * math.pi), run_time=1.6, rate_func=linear)
+
+        # Train: a behaviour learns; the reward climbs.
+        tx, ty = xs[2], y0 - 0.25
+        ax = VGroup(Line([tx - 1.1, ty - 0.7, 0], [tx + 1.15, ty - 0.7, 0], stroke_width=1.6, color=DIM),
+                    Line([tx - 1.1, ty - 0.7, 0], [tx - 1.1, ty + 0.85, 0], stroke_width=1.6, color=DIM))
+        rl = label("reward", 12, DIM, MONO).next_to(ax[1], UP, buff=0.05).shift(RIGHT * 0.2)
+        pts = [[tx - 1.1 + 2.2 * u, ty - 0.65 + 1.4 * (1 - math.exp(-4 * u)) + 0.07 * math.sin(23 * u), 0]
+               for u in np.linspace(0, 1, 40)]
+        curve = VMobject(stroke_color=AMBER, stroke_width=3).set_points_smoothly(pts)
+        self.play(GrowArrow(arrows[1]), FadeIn(panels[2]), FadeIn(ax), FadeIn(rl), run_time=0.6)
+        self.play(Create(curve), tt.animate.set_value(3.5 * math.pi), run_time=1.6, rate_func=linear)
+
+        # Deploy: the same files drive a real servo.
+        dx_, dy_ = xs[3], y0 - 0.25
+        board = RoundedRectangle(width=1.5, height=0.8, corner_radius=0.08, stroke_color=CORAL, stroke_width=2,
+                                 fill_color=GRID, fill_opacity=1).move_to([dx_ - 0.35, dy_ - 0.25, 0])
+        pins = VGroup(*[Line([dx_ - 0.95 + 0.2 * k, dy_ + 0.15, 0], [dx_ - 0.95 + 0.2 * k, dy_ + 0.27, 0], stroke_width=2,
+                             color=DIM) for k in range(7)])
+        chip = Rectangle(width=0.5, height=0.36, stroke_color=INK, stroke_width=1.5).move_to([dx_ - 0.35, dy_ - 0.25, 0])
+        case = Rectangle(width=0.55, height=0.8, stroke_color=INK, stroke_width=2, fill_color=GRID,
+                         fill_opacity=1).move_to([dx_ + 0.85, dy_ - 0.05, 0])
+        horn = VGroup(Circle(radius=0.2, stroke_color=CORAL, stroke_width=2.5),
+                      Line([0, 0, 0], [0.2, 0, 0], stroke_width=3, color=CORAL)).move_to([dx_ + 0.85, dy_ + 0.45, 0])
+        wire = Line(board.get_right(), case.get_left(), stroke_width=2, color=DIM)
+        files = label("the same files", 13, DIM, MONO).move_to([dx_, dy_ + 0.75, 0])
+        self.play(GrowArrow(arrows[2]), FadeIn(panels[3]), run_time=0.6)
+        self.play(FadeIn(board), FadeIn(pins), FadeIn(chip), FadeIn(case), FadeIn(horn), Create(wire), FadeIn(files),
+                  tt.animate.set_value(4.5 * math.pi), run_time=0.8)
+        self.play(Rotate(horn[1], angle=math.pi * 0.75, about_point=horn[0].get_center()),
+                  tt.animate.set_value(5.5 * math.pi), run_time=1.0)
+
+        # All in one platform.
+        plat = RoundedRectangle(width=3 * (xs[1] - xs[0]) + pw + 0.45, height=ph + 0.45, corner_radius=0.22, stroke_color=INK,
+                                stroke_width=1.6, stroke_opacity=0.7).move_to([0, y0, 0])
+        pl = label("gameRobotics · one platform", 16, INK, MONO).next_to(plat, UP, buff=0.08).align_to(plat, LEFT)
+        self.play(Create(plat), FadeIn(pl), tt.animate.set_value(6.5 * math.pi), run_time=1.2)
+
+        # From idea to working robot, and round again.
+        ya = y0 - ph / 2 - 0.62
+        sweep = Arrow([-6.3, ya, 0], [6.3, ya, 0], buff=0, stroke_width=3, color=TEAL, tip_length=0.2,
+                      max_tip_length_to_length_ratio=0.05)
+        a = label("idea", 18, DIM).next_to(sweep.get_start(), UP, buff=0.08).align_to(sweep, LEFT)
+        b = label("working robot", 18, INK, weight="BOLD").next_to(sweep.get_end(), UP, buff=0.08).align_to(sweep, RIGHT)
+        back = DashedLine([5.6, ya - 0.28, 0], [-5.6, ya - 0.28, 0], stroke_width=1.6, color=DIM, dash_length=0.08)
+        it = label("iterate", 13, DIM, MONO).move_to([0, ya - 0.28, 0])
+        it_bg = Rectangle(width=0.95, height=0.26, stroke_width=0, fill_color=BG, fill_opacity=1).move_to(it)
+        self.play(GrowArrow(sweep), FadeIn(a), tt.animate.set_value(7.5 * math.pi), run_time=1.2)
+        self.play(FadeIn(b), Create(back), FadeIn(it_bg), FadeIn(it), tt.animate.set_value(8.5 * math.pi), run_time=1.0)
+        self.play(tt.animate.set_value(12.5 * math.pi), run_time=4.0, rate_func=linear)
 
 
 # Narrated tours: videos with a voice-over, one step per entry in tours/<tour>.json. These helpers

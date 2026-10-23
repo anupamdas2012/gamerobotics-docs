@@ -7,13 +7,14 @@
     {
       "id": "intro",
       "kind": "card",
-      "title": "One face, four robots",
-      "caption": "Easier to build, faster to iterate on: one face, four robots, the same software",
-      "text": "We're making advanced robotics easier to build and faster to iterate on. Here's how: one recorded face, four different robots, and the same software driving them all. Only the robot's description changes. And it's built to drive the real robot the same way: swap the simulator for real servos, and nothing above it changes.",
+      "title": "gameRobotics",
+      "caption": "Easier to build, faster to iterate on",
+      "text": "We're making advanced robotics easier to build and faster to iterate on. Here's how: design robots visually, simulate and train behaviours, then deploy directly to real hardware, all in one platform. Go from idea to working robot faster than ever.",
       "explain": {
-        "clip": "animations/AppTick.mp4",
+        "clip": "animations/IdeaToRobot.mp4",
         "full": true,
-        "label": "Under the hood: the app takes in what the camera sees and sends intents, 50 times a second"
+        "hold": true,
+        "label": "Design, simulate, train, deploy: one platform"
       }
     },
     {
@@ -21,8 +22,8 @@
       "kind": "robot",
       "robot": "lexjr",
       "title": "LexJR · six joints",
-      "caption": "Head glances, neck and torso follow · leans back to keep its distance · mirrors your head tilt",
-      "text": "First, LexJR, a desk robot with six joints. The head makes the quick glance, and the neck and torso turn after it. When the face comes closer, LexJR leans back to keep its distance, by a few centimetres. And it's the only one of the four with a head roll joint, so it mirrors the tilt of your head.",
+      "caption": "Brain and body apart · the brain decides what, the body works out how",
+      "text": "Here's the idea: keep the brain and the body apart. The brain decides what to do; the body works out how to do it. We gave one curious character to four different bodies, starting with LexJR.",
       "explain": {
         "clip": "animations/StaggeredGaze.mp4",
         "label": "Under the hood: the eyes lead, the body follows"
@@ -33,8 +34,8 @@
       "kind": "robot",
       "robot": "pantilt",
       "title": "Pan tilt · two joints",
-      "caption": "The same gaze, on pan and tilt alone · no lean or roll, so those behaviours are not started",
-      "text": "Next, a pan tilt, built from two of LexJR's servos and its camera. The same gaze behaviour follows the face with just pan and tilt. Its files give it no way to lean or roll, so the app doesn't start keep distance or mimic tilt for it. Nothing else changes.",
+      "caption": "Two servos · the same brain, using what this body can do",
+      "text": "Swap in a body with just two servos, and the brain doesn't change. The body says what it can do, and the brain uses what's there. No special cases.",
       "explain": {
         "clip": "animations/AppTick.mp4",
         "label": "Under the hood: the app's slots: gaze, approach, tilt. The pan tilt fills only gaze"
@@ -45,8 +46,8 @@
       "kind": "robot",
       "robot": "rover",
       "title": "Rover · two wheels",
-      "caption": "Looking means turning the whole robot · keeping its distance means driving",
-      "text": "Now a rover: two of the same servos, switched to wheel mode. Here, looking at you means turning the whole robot, and keeping its distance means driving. The behaviour asks for exactly what it asked of LexJR: approach by so many metres. The daemon's differential drive turns that into wheel speeds.",
+      "caption": "Wheels · the brain asks the same; the body steers and drives",
+      "text": "Now a body on wheels. To the brain, nothing changed: it still asks to look and to keep its distance. The body turns that into steering and driving.",
       "explain": {
         "still": "animations/ArchitectureTour.mp4",
         "crop": [
@@ -62,9 +63,9 @@
       "id": "roverpt",
       "kind": "robot",
       "robot": "roverpt",
-      "title": "Rover pan tilt · wheels and a head",
-      "caption": "The head glances, the base turns after it and drives · new robot files, no daemon changes",
-      "text": "Put the pan tilt on the rover, and you get both. The head glances first, and the base turns after it, the way LexJR's torso follows its neck. It drives to keep its distance. This robot took new robot files, and no changes to the daemon at all.",
+      "title": "Rover pan tilt · two bodies in one",
+      "caption": "Two bodies blended into one · the same brain, zero new code",
+      "text": "And here's where it gets magical: blend two bodies into one. The head that glances and the base that drives become a single body, and the same brain drives it straight away, with zero new code.",
       "explain": {
         "clip": "animations/StaggeredGaze.mp4",
         "label": "Under the hood: the same staggered gaze, with the base as the body"
@@ -73,16 +74,16 @@
     {
       "id": "grid",
       "kind": "grid",
-      "title": "Same face, same moment",
-      "caption": "One behaviour, four bodies",
-      "text": "Here they are side by side, at the same moment of the same recording. One set of behaviours, four different bodies."
+      "title": "One brain, four bodies",
+      "caption": "The same moment, side by side",
+      "text": "One brain, four bodies. Build the brain once, and give it the next body you describe."
     },
     {
       "id": "outro",
       "kind": "card",
-      "title": "From idea to atom",
-      "caption": "gameRobotics: advanced robotics, approachable, affordable and fun to iterate on",
-      "text": "gameRobotics makes advanced robotics approachable, affordable, and fun to iterate on. Dream up a character, try it in simulation, give it a body, and watch it come to life. From idea to atom.",
+      "title": "From idea to atoms",
+      "caption": "gameRobotics",
+      "text": "From simulation to real-world robotics, we're making it easier than ever to bring your ideas to life. Build faster, experiment freely, and push the boundaries of what's possible. Game Robotics. From idea to atoms.",
       "explain": {
         "clip": "animations/Pipeline.mp4",
         "full": true,

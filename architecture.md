@@ -1,6 +1,6 @@
 # gameRobotics architecture
 
-Status: current as of 2026-10-22 (gamerobotics `5c506b7`, lexjr-sim `4b57cbf`).
+Status: current as of 2026-10-22 (gamerobotics `8d3a51d`, lexjr-sim `4b57cbf`).
 What the system does, feature by feature, is in [spec.md](spec.md); how an app and its
 behaviours are built is in [app-architecture.md](app-architecture.md); what we're building on the
 engine, and for whom, is in [product-spec.md](product-spec.md). The illustrated version, with

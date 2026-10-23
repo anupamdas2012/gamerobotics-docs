@@ -5,7 +5,7 @@
       "file": "one-face-four-robots.mp4",
       "poster": "one-face-four-robots.jpg",
       "title": "One face, four robots",
-      "what": "One face capture from a webcam, played to LexJR, the pan tilt, the rover and the rover pan tilt: the same gamerobotd and behaviours on four bodies, captioned and narrated.",
+      "what": "The platform in one pass, then one character on four bodies: LexJR, the pan tilt, the rover and the rover pan tilt, driven by the same brain from one face capture, captioned and narrated. Its last three segments still carry their earlier narration.",
       "command": ".venv-docs/bin/python scripts/showreel.py all",
       "branch": "face-mocap",
       "date": "2026-10-22",
